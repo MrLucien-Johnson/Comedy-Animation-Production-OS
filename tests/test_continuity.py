@@ -37,8 +37,8 @@ def test_state_inheritance_keeps_jar_closed_until_frame3():
     )
     assert seq[0].continuity.props[0].state == PropState.CLOSED
     assert seq[1].continuity.props[0].state == PropState.CLOSED
-    assert seq[2].continuity.props[0].state == PropState.OPEN
-    assert seq[3].continuity.props[0].state == PropState.OPEN
+    assert seq[2].continuity.props[0].state == PropState.OPEN_LID_RIGHT
+    assert seq[3].continuity.props[0].state == PropState.OPEN_LID_RIGHT
     # Identity stable
     assert_prop_identity_stable(seq, "cookie-jar")
     assert all(

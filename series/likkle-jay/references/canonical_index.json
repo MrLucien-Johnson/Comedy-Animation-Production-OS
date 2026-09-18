@@ -2,115 +2,237 @@
   "assets": {
     "character-likkle-jay-v1": {
       "asset_id": "character-likkle-jay-v1",
+      "id": "character-likkle-jay-v1",
+      "type": "CHARACTER_MASTER",
       "kind": "character",
+      "series_id": "likkle-jay",
       "slug": "likkle-jay",
       "version": 1,
-      "status": "DRAFT",
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
       "path": null,
       "checksum": null,
+      "created_at": "2026-09-18T00:00:00Z",
+      "updated_at": "2026-09-18T13:05:32.403369Z",
+      "approved_at": null,
+      "supersedes": null,
       "superseded_by": null,
       "locked_traits": [
         "hair:rounded dome of tight black curls, full and consistent",
-        "wardrobe:yellow tee red collar green shorts"
+        "skin:medium/dark brown",
+        "face:round youthful cheeks",
+        "wardrobe:yellow T-shirt red collar green shorts"
       ],
-      "metadata": {},
-      "created_at": "2026-09-18T00:00:00Z",
-      "updated_at": "2026-09-18T00:00:00Z"
+      "metadata": {
+        "hair_hard_lock": "rounded dome of tight black curls, full and consistent",
+        "prohibited_hair": [
+          "fade",
+          "taper",
+          "crop",
+          "flat top",
+          "slick",
+          "straight",
+          "loose curls",
+          "different length"
+        ]
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": null
     },
     "character-auntie-bev-v1": {
       "asset_id": "character-auntie-bev-v1",
+      "id": "character-auntie-bev-v1",
+      "type": "CHARACTER_MASTER",
       "kind": "character",
+      "series_id": "likkle-jay",
       "slug": "auntie-bev",
       "version": 1,
-      "status": "DRAFT",
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
       "path": null,
       "checksum": null,
+      "created_at": "2026-09-18T00:00:00Z",
+      "updated_at": "2026-09-18T13:05:32.403721Z",
+      "approved_at": null,
+      "supersedes": null,
       "superseded_by": null,
       "locked_traits": [
+        "silhouette:rounded/stout",
         "floral house dress",
-        "headwrap",
+        "matching headwrap",
         "round glasses",
         "gold earrings"
       ],
-      "metadata": {},
-      "created_at": "2026-09-18T00:00:00Z",
-      "updated_at": "2026-09-18T00:00:00Z"
+      "metadata": {
+        "prop_when_scolding": "wooden spoon"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": null
     },
     "outfit-likkle-jay-default-v1": {
       "asset_id": "outfit-likkle-jay-default-v1",
+      "id": "outfit-likkle-jay-default-v1",
+      "type": "OUTFIT_MASTER",
       "kind": "outfit",
+      "series_id": "likkle-jay",
       "slug": "likkle-jay-default",
       "version": 1,
-      "status": "DRAFT",
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
       "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T00:00:00Z",
+      "updated_at": "2026-09-18T13:05:32.403985Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
       "locked_traits": [
         "yellow T-shirt",
         "red collar trim",
         "green shorts"
       ],
       "metadata": {},
-      "created_at": "2026-09-18T00:00:00Z",
-      "updated_at": "2026-09-18T00:00:00Z"
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": null
     },
     "location-kitchen-v1": {
       "asset_id": "location-kitchen-v1",
+      "id": "location-kitchen-v1",
+      "type": "LOCATION_MASTER",
       "kind": "location",
+      "series_id": "likkle-jay",
       "slug": "kitchen",
       "version": 1,
-      "status": "DRAFT",
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
       "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T00:00:00Z",
+      "updated_at": "2026-09-18T13:05:32.404488Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
       "locked_traits": [
         "counter left",
         "fridge right",
-        "straight-on camera"
+        "straight-on camera",
+        "no mirror"
       ],
-      "metadata": {},
-      "created_at": "2026-09-18T00:00:00Z",
-      "updated_at": "2026-09-18T00:00:00Z"
+      "metadata": {
+        "prop_default_region": {
+          "cookie-jar": "LEFT_COUNTER"
+        }
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": null
     },
     "location-living-room-v1": {
       "asset_id": "location-living-room-v1",
+      "id": "location-living-room-v1",
+      "type": "LOCATION_MASTER",
       "kind": "location",
+      "series_id": "likkle-jay",
       "slug": "living-room",
       "version": 1,
-      "status": "DRAFT",
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
       "path": null,
-      "locked_traits": [],
-      "metadata": {},
+      "checksum": null,
       "created_at": "2026-09-18T00:00:00Z",
-      "updated_at": "2026-09-18T00:00:00Z"
+      "updated_at": "2026-09-18T13:05:32.404754Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "sofa placement",
+        "window side"
+      ],
+      "metadata": {},
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": null
     },
     "location-yard-v1": {
       "asset_id": "location-yard-v1",
+      "id": "location-yard-v1",
+      "type": "LOCATION_MASTER",
       "kind": "location",
+      "series_id": "likkle-jay",
       "slug": "yard",
       "version": 1,
-      "status": "DRAFT",
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
       "path": null,
-      "locked_traits": [],
-      "metadata": {},
+      "checksum": null,
       "created_at": "2026-09-18T00:00:00Z",
-      "updated_at": "2026-09-18T00:00:00Z"
+      "updated_at": "2026-09-18T13:05:32.405011Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "fence line",
+        "house exterior side"
+      ],
+      "metadata": {},
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": null
     },
     "location-jay-bedroom-v1": {
       "asset_id": "location-jay-bedroom-v1",
+      "id": "location-jay-bedroom-v1",
+      "type": "LOCATION_MASTER",
       "kind": "location",
+      "series_id": "likkle-jay",
       "slug": "jay-bedroom",
       "version": 1,
-      "status": "DRAFT",
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
       "path": null,
-      "locked_traits": [],
-      "metadata": {},
+      "checksum": null,
       "created_at": "2026-09-18T00:00:00Z",
-      "updated_at": "2026-09-18T00:00:00Z"
+      "updated_at": "2026-09-18T13:05:32.405258Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "bed side",
+        "window placement"
+      ],
+      "metadata": {},
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": null
     },
     "prop-cookie-jar-v1": {
       "asset_id": "prop-cookie-jar-v1",
+      "id": "prop-cookie-jar-v1",
+      "type": "PROP_MASTER",
       "kind": "prop",
+      "series_id": "likkle-jay",
       "slug": "cookie-jar",
       "version": 1,
-      "status": "DRAFT",
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
       "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T00:00:00Z",
+      "updated_at": "2026-09-18T13:05:32.405510Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
       "locked_traits": [
         "label:COOKIES",
         "glass jar",
@@ -118,25 +240,1102 @@
         "small cookies"
       ],
       "metadata": {
-        "label": "COOKIES"
+        "label": "COOKIES",
+        "states": [
+          "CLOSED",
+          "OPEN_LID_RIGHT",
+          "OPEN_LID_LEFT",
+          "PARTIALLY_FULL",
+          "EMPTY"
+        ],
+        "default_region": "LEFT_COUNTER"
       },
-      "created_at": "2026-09-18T00:00:00Z",
-      "updated_at": "2026-09-18T00:00:00Z"
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": null
     },
     "outfit-auntie-bev-default-v1": {
       "asset_id": "outfit-auntie-bev-default-v1",
+      "id": "outfit-auntie-bev-default-v1",
+      "type": "OUTFIT_MASTER",
       "kind": "outfit",
+      "series_id": "likkle-jay",
       "slug": "auntie-bev-default",
       "version": 1,
-      "status": "DRAFT",
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
       "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T00:00:00Z",
+      "updated_at": "2026-09-18T13:05:32.404230Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
       "locked_traits": [
         "orange/red floral house dress",
         "matching headwrap"
       ],
       "metadata": {},
-      "created_at": "2026-09-18T00:00:00Z",
-      "updated_at": "2026-09-18T00:00:00Z"
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": null
+    },
+    "style-likkle-jay-v1": {
+      "asset_id": "style-likkle-jay-v1",
+      "id": "style-likkle-jay-v1",
+      "type": "STYLE_MASTER",
+      "kind": "style",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.405742Z",
+      "updated_at": "2026-09-18T13:05:32.405793Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "warm-toned family-friendly fictional 2D cartoon",
+        "bold dark outlines",
+        "flat shading",
+        "1:1 master"
+      ],
+      "metadata": {
+        "watermark": "MRLUCIENJOHNSON"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "turnaround-likkle-jay-front-v1": {
+      "asset_id": "turnaround-likkle-jay-front-v1",
+      "id": "turnaround-likkle-jay-front-v1",
+      "type": "CHARACTER_TURNAROUND",
+      "kind": "turnaround",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-front",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.406082Z",
+      "updated_at": "2026-09-18T13:05:32.406139Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "inherits character-likkle-jay-v1 hair+outfit locks"
+      ],
+      "metadata": {
+        "view": "FRONT",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "turnaround-auntie-bev-front-v1": {
+      "asset_id": "turnaround-auntie-bev-front-v1",
+      "id": "turnaround-auntie-bev-front-v1",
+      "type": "CHARACTER_TURNAROUND",
+      "kind": "turnaround",
+      "series_id": "likkle-jay",
+      "slug": "auntie-bev-front",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.407330Z",
+      "updated_at": "2026-09-18T13:05:32.407404Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "inherits character-auntie-bev-v1 locks"
+      ],
+      "metadata": {
+        "view": "FRONT",
+        "character_id": "auntie-bev"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "turnaround-likkle-jay-three-quarter-left-v1": {
+      "asset_id": "turnaround-likkle-jay-three-quarter-left-v1",
+      "id": "turnaround-likkle-jay-three-quarter-left-v1",
+      "type": "CHARACTER_TURNAROUND",
+      "kind": "turnaround",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-three-quarter-left",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.407750Z",
+      "updated_at": "2026-09-18T13:05:32.407812Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "inherits character-likkle-jay-v1 hair+outfit locks"
+      ],
+      "metadata": {
+        "view": "3/4 LEFT",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "turnaround-auntie-bev-three-quarter-left-v1": {
+      "asset_id": "turnaround-auntie-bev-three-quarter-left-v1",
+      "id": "turnaround-auntie-bev-three-quarter-left-v1",
+      "type": "CHARACTER_TURNAROUND",
+      "kind": "turnaround",
+      "series_id": "likkle-jay",
+      "slug": "auntie-bev-three-quarter-left",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.408137Z",
+      "updated_at": "2026-09-18T13:05:32.408200Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "inherits character-auntie-bev-v1 locks"
+      ],
+      "metadata": {
+        "view": "3/4 LEFT",
+        "character_id": "auntie-bev"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "turnaround-likkle-jay-three-quarter-right-v1": {
+      "asset_id": "turnaround-likkle-jay-three-quarter-right-v1",
+      "id": "turnaround-likkle-jay-three-quarter-right-v1",
+      "type": "CHARACTER_TURNAROUND",
+      "kind": "turnaround",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-three-quarter-right",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.408520Z",
+      "updated_at": "2026-09-18T13:05:32.408587Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "inherits character-likkle-jay-v1 hair+outfit locks"
+      ],
+      "metadata": {
+        "view": "3/4 RIGHT",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "turnaround-likkle-jay-side-left-v1": {
+      "asset_id": "turnaround-likkle-jay-side-left-v1",
+      "id": "turnaround-likkle-jay-side-left-v1",
+      "type": "CHARACTER_TURNAROUND",
+      "kind": "turnaround",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-side-left",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.408917Z",
+      "updated_at": "2026-09-18T13:05:32.408989Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "inherits character-likkle-jay-v1 hair+outfit locks"
+      ],
+      "metadata": {
+        "view": "SIDE LEFT",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "turnaround-auntie-bev-side-left-v1": {
+      "asset_id": "turnaround-auntie-bev-side-left-v1",
+      "id": "turnaround-auntie-bev-side-left-v1",
+      "type": "CHARACTER_TURNAROUND",
+      "kind": "turnaround",
+      "series_id": "likkle-jay",
+      "slug": "auntie-bev-side-left",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.409348Z",
+      "updated_at": "2026-09-18T13:05:32.409421Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "inherits character-auntie-bev-v1 locks"
+      ],
+      "metadata": {
+        "view": "SIDE LEFT",
+        "character_id": "auntie-bev"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "turnaround-likkle-jay-side-right-v1": {
+      "asset_id": "turnaround-likkle-jay-side-right-v1",
+      "id": "turnaround-likkle-jay-side-right-v1",
+      "type": "CHARACTER_TURNAROUND",
+      "kind": "turnaround",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-side-right",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.409858Z",
+      "updated_at": "2026-09-18T13:05:32.409943Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "inherits character-likkle-jay-v1 hair+outfit locks"
+      ],
+      "metadata": {
+        "view": "SIDE RIGHT",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "turnaround-likkle-jay-back-v1": {
+      "asset_id": "turnaround-likkle-jay-back-v1",
+      "id": "turnaround-likkle-jay-back-v1",
+      "type": "CHARACTER_TURNAROUND",
+      "kind": "turnaround",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-back",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.410364Z",
+      "updated_at": "2026-09-18T13:05:32.410449Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "inherits character-likkle-jay-v1 hair+outfit locks"
+      ],
+      "metadata": {
+        "view": "BACK",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "turnaround-auntie-bev-back-v1": {
+      "asset_id": "turnaround-auntie-bev-back-v1",
+      "id": "turnaround-auntie-bev-back-v1",
+      "type": "CHARACTER_TURNAROUND",
+      "kind": "turnaround",
+      "series_id": "likkle-jay",
+      "slug": "auntie-bev-back",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.410873Z",
+      "updated_at": "2026-09-18T13:05:32.410956Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "inherits character-auntie-bev-v1 locks"
+      ],
+      "metadata": {
+        "view": "BACK",
+        "character_id": "auntie-bev"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-likkle-jay-neutral-v1": {
+      "asset_id": "expression-likkle-jay-neutral-v1",
+      "id": "expression-likkle-jay-neutral-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-neutral",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.411385Z",
+      "updated_at": "2026-09-18T13:05:32.411470Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine hair/outfit/identity"
+      ],
+      "metadata": {
+        "expression": "NEUTRAL",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-likkle-jay-happy-v1": {
+      "asset_id": "expression-likkle-jay-happy-v1",
+      "id": "expression-likkle-jay-happy-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-happy",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.411896Z",
+      "updated_at": "2026-09-18T13:05:32.411983Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine hair/outfit/identity"
+      ],
+      "metadata": {
+        "expression": "HAPPY",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-likkle-jay-mischievous-v1": {
+      "asset_id": "expression-likkle-jay-mischievous-v1",
+      "id": "expression-likkle-jay-mischievous-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-mischievous",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.412421Z",
+      "updated_at": "2026-09-18T13:05:32.412515Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine hair/outfit/identity"
+      ],
+      "metadata": {
+        "expression": "MISCHIEVOUS",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-likkle-jay-excited-v1": {
+      "asset_id": "expression-likkle-jay-excited-v1",
+      "id": "expression-likkle-jay-excited-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-excited",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.412972Z",
+      "updated_at": "2026-09-18T13:05:32.413067Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine hair/outfit/identity"
+      ],
+      "metadata": {
+        "expression": "EXCITED",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-likkle-jay-surprised-v1": {
+      "asset_id": "expression-likkle-jay-surprised-v1",
+      "id": "expression-likkle-jay-surprised-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-surprised",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.413543Z",
+      "updated_at": "2026-09-18T13:05:32.413640Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine hair/outfit/identity"
+      ],
+      "metadata": {
+        "expression": "SURPRISED",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-likkle-jay-shocked-v1": {
+      "asset_id": "expression-likkle-jay-shocked-v1",
+      "id": "expression-likkle-jay-shocked-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-shocked",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.414161Z",
+      "updated_at": "2026-09-18T13:05:32.414264Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine hair/outfit/identity"
+      ],
+      "metadata": {
+        "expression": "SHOCKED",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-likkle-jay-guilty-v1": {
+      "asset_id": "expression-likkle-jay-guilty-v1",
+      "id": "expression-likkle-jay-guilty-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-guilty",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.414810Z",
+      "updated_at": "2026-09-18T13:05:32.414916Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine hair/outfit/identity"
+      ],
+      "metadata": {
+        "expression": "GUILTY",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-likkle-jay-nervous-v1": {
+      "asset_id": "expression-likkle-jay-nervous-v1",
+      "id": "expression-likkle-jay-nervous-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-nervous",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.415474Z",
+      "updated_at": "2026-09-18T13:05:32.415582Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine hair/outfit/identity"
+      ],
+      "metadata": {
+        "expression": "NERVOUS",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-likkle-jay-innocent-denial-v1": {
+      "asset_id": "expression-likkle-jay-innocent-denial-v1",
+      "id": "expression-likkle-jay-innocent-denial-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-innocent-denial",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.416163Z",
+      "updated_at": "2026-09-18T13:05:32.416289Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine hair/outfit/identity"
+      ],
+      "metadata": {
+        "expression": "INNOCENT_DENIAL",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-likkle-jay-laughing-v1": {
+      "asset_id": "expression-likkle-jay-laughing-v1",
+      "id": "expression-likkle-jay-laughing-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "likkle-jay-laughing",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.416935Z",
+      "updated_at": "2026-09-18T13:05:32.417049Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine hair/outfit/identity"
+      ],
+      "metadata": {
+        "expression": "LAUGHING",
+        "character_id": "likkle-jay"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-auntie-bev-neutral-v1": {
+      "asset_id": "expression-auntie-bev-neutral-v1",
+      "id": "expression-auntie-bev-neutral-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "auntie-bev-neutral",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.417607Z",
+      "updated_at": "2026-09-18T13:05:32.417722Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine identity"
+      ],
+      "metadata": {
+        "expression": "NEUTRAL",
+        "character_id": "auntie-bev"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-auntie-bev-suspicious-v1": {
+      "asset_id": "expression-auntie-bev-suspicious-v1",
+      "id": "expression-auntie-bev-suspicious-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "auntie-bev-suspicious",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.418294Z",
+      "updated_at": "2026-09-18T13:05:32.418416Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine identity"
+      ],
+      "metadata": {
+        "expression": "SUSPICIOUS",
+        "character_id": "auntie-bev"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-auntie-bev-confused-v1": {
+      "asset_id": "expression-auntie-bev-confused-v1",
+      "id": "expression-auntie-bev-confused-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "auntie-bev-confused",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.419187Z",
+      "updated_at": "2026-09-18T13:05:32.419316Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine identity"
+      ],
+      "metadata": {
+        "expression": "CONFUSED",
+        "character_id": "auntie-bev"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-auntie-bev-stern-v1": {
+      "asset_id": "expression-auntie-bev-stern-v1",
+      "id": "expression-auntie-bev-stern-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "auntie-bev-stern",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.420160Z",
+      "updated_at": "2026-09-18T13:05:32.420312Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine identity"
+      ],
+      "metadata": {
+        "expression": "STERN",
+        "character_id": "auntie-bev"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-auntie-bev-annoyed-v1": {
+      "asset_id": "expression-auntie-bev-annoyed-v1",
+      "id": "expression-auntie-bev-annoyed-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "auntie-bev-annoyed",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.421139Z",
+      "updated_at": "2026-09-18T13:05:32.421273Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine identity"
+      ],
+      "metadata": {
+        "expression": "ANNOYED",
+        "character_id": "auntie-bev"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-auntie-bev-shocked-v1": {
+      "asset_id": "expression-auntie-bev-shocked-v1",
+      "id": "expression-auntie-bev-shocked-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "auntie-bev-shocked",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.421963Z",
+      "updated_at": "2026-09-18T13:05:32.422112Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine identity"
+      ],
+      "metadata": {
+        "expression": "SHOCKED",
+        "character_id": "auntie-bev"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-auntie-bev-scolding-v1": {
+      "asset_id": "expression-auntie-bev-scolding-v1",
+      "id": "expression-auntie-bev-scolding-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "auntie-bev-scolding",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.422821Z",
+      "updated_at": "2026-09-18T13:05:32.422959Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine identity"
+      ],
+      "metadata": {
+        "expression": "SCOLDING",
+        "character_id": "auntie-bev"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "expression-auntie-bev-amused-v1": {
+      "asset_id": "expression-auntie-bev-amused-v1",
+      "id": "expression-auntie-bev-amused-v1",
+      "type": "CHARACTER_EXPRESSION",
+      "kind": "expression",
+      "series_id": "likkle-jay",
+      "slug": "auntie-bev-amused",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.423638Z",
+      "updated_at": "2026-09-18T13:05:32.423798Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "facial acting only — do not redefine identity"
+      ],
+      "metadata": {
+        "expression": "AMUSED",
+        "character_id": "auntie-bev"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "prop-state-cookie-jar-closed-v1": {
+      "asset_id": "prop-state-cookie-jar-closed-v1",
+      "id": "prop-state-cookie-jar-closed-v1",
+      "type": "PROP_STATE",
+      "kind": "prop-state",
+      "series_id": "likkle-jay",
+      "slug": "cookie-jar-closed",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.424572Z",
+      "updated_at": "2026-09-18T13:05:32.424727Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "identity=prop-cookie-jar-v1",
+        "label:COOKIES"
+      ],
+      "metadata": {
+        "prop_id": "cookie-jar",
+        "state": "CLOSED",
+        "label": "COOKIES"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "prop-state-cookie-jar-open-lid-right-v1": {
+      "asset_id": "prop-state-cookie-jar-open-lid-right-v1",
+      "id": "prop-state-cookie-jar-open-lid-right-v1",
+      "type": "PROP_STATE",
+      "kind": "prop-state",
+      "series_id": "likkle-jay",
+      "slug": "cookie-jar-open-lid-right",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.425578Z",
+      "updated_at": "2026-09-18T13:05:32.425739Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "identity=prop-cookie-jar-v1",
+        "label:COOKIES"
+      ],
+      "metadata": {
+        "prop_id": "cookie-jar",
+        "state": "OPEN_LID_RIGHT",
+        "label": "COOKIES"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "prop-state-cookie-jar-open-lid-left-v1": {
+      "asset_id": "prop-state-cookie-jar-open-lid-left-v1",
+      "id": "prop-state-cookie-jar-open-lid-left-v1",
+      "type": "PROP_STATE",
+      "kind": "prop-state",
+      "series_id": "likkle-jay",
+      "slug": "cookie-jar-open-lid-left",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.426585Z",
+      "updated_at": "2026-09-18T13:05:32.426737Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "identity=prop-cookie-jar-v1",
+        "label:COOKIES"
+      ],
+      "metadata": {
+        "prop_id": "cookie-jar",
+        "state": "OPEN_LID_LEFT",
+        "label": "COOKIES"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "prop-state-cookie-jar-partially-full-v1": {
+      "asset_id": "prop-state-cookie-jar-partially-full-v1",
+      "id": "prop-state-cookie-jar-partially-full-v1",
+      "type": "PROP_STATE",
+      "kind": "prop-state",
+      "series_id": "likkle-jay",
+      "slug": "cookie-jar-partially-full",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.427503Z",
+      "updated_at": "2026-09-18T13:05:32.427656Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "identity=prop-cookie-jar-v1",
+        "label:COOKIES"
+      ],
+      "metadata": {
+        "prop_id": "cookie-jar",
+        "state": "PARTIALLY_FULL",
+        "label": "COOKIES"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "prop-state-cookie-jar-empty-v1": {
+      "asset_id": "prop-state-cookie-jar-empty-v1",
+      "id": "prop-state-cookie-jar-empty-v1",
+      "type": "PROP_STATE",
+      "kind": "prop-state",
+      "series_id": "likkle-jay",
+      "slug": "cookie-jar-empty",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.428473Z",
+      "updated_at": "2026-09-18T13:05:32.428648Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "identity=prop-cookie-jar-v1",
+        "label:COOKIES"
+      ],
+      "metadata": {
+        "prop_id": "cookie-jar",
+        "state": "EMPTY",
+        "label": "COOKIES"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "location-camera-kitchen-v1": {
+      "asset_id": "location-camera-kitchen-v1",
+      "id": "location-camera-kitchen-v1",
+      "type": "LOCATION_CAMERA",
+      "kind": "location-camera",
+      "series_id": "likkle-jay",
+      "slug": "kitchen-camera",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.429585Z",
+      "updated_at": "2026-09-18T13:05:32.429797Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "straight-on baseline",
+        "do not mirror"
+      ],
+      "metadata": {
+        "location_id": "kitchen"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
+    },
+    "location-prop-layout-kitchen-v1": {
+      "asset_id": "location-prop-layout-kitchen-v1",
+      "id": "location-prop-layout-kitchen-v1",
+      "type": "LOCATION_PROP_LAYOUT",
+      "kind": "location-prop-layout",
+      "series_id": "likkle-jay",
+      "slug": "kitchen-prop-layout",
+      "version": 1,
+      "status": "REFERENCE_REQUIRED",
+      "source": "registry",
+      "file": null,
+      "path": null,
+      "checksum": null,
+      "created_at": "2026-09-18T13:05:32.430730Z",
+      "updated_at": "2026-09-18T13:05:32.430889Z",
+      "approved_at": null,
+      "supersedes": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "cookie-jar→LEFT_COUNTER",
+        "fridge→RIGHT_FRIDGE"
+      ],
+      "metadata": {
+        "location_id": "kitchen"
+      },
+      "is_golden": false,
+      "reference_required": true,
+      "reference_required_reason": "No production image file yet — generate or import before APPROVED"
     }
   }
 }

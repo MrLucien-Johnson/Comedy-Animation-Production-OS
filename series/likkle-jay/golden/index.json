@@ -1,0 +1,24 @@
+{
+  "frames": {
+    "golden-s01e02-f03-open-cookie-jar": {
+      "golden_id": "golden-s01e02-f03-open-cookie-jar",
+      "series_id": "likkle-jay",
+      "episode_id": "s01e02",
+      "frame_id": "s01e02_f03",
+      "source_asset_id": null,
+      "file": null,
+      "status": "REFERENCE_REQUIRED",
+      "governs": [
+        "prop-cookie-jar open state",
+        "lid beside jar",
+        "kitchen composition",
+        "jar scale",
+        "jar position LEFT_COUNTER"
+      ],
+      "notes": "Desired OPEN configuration continuity for Di Cookie Jar from frame 3 onward.",
+      "reference_required_reason": "S01E02 Frame 3 open-cookie-jar visual master is not present in this repository. User must upload/select the approved open-jar reference before it can govern production.",
+      "created_at": "2026-09-18T13:05:32.432234Z",
+      "approved_at": null
+    }
+  }
+}

@@ -31,8 +31,8 @@
             "prop_id": "cookie-jar",
             "canonical_asset_id": "prop-cookie-jar-v1",
             "state": "CLOSED",
-            "position": "counter left area",
-            "scale_notes": "cookies and jar must not become oversized; derive from canonical reference",
+            "position": "LEFT_COUNTER",
+            "scale_notes": "cookie-jar-height and cookie-diameter from relative_scale.json",
             "custom_state": null
           }
         ],
@@ -76,8 +76,8 @@
             "prop_id": "cookie-jar",
             "canonical_asset_id": "prop-cookie-jar-v1",
             "state": "CLOSED",
-            "position": "counter left area",
-            "scale_notes": "cookies and jar must not become oversized; derive from canonical reference",
+            "position": "LEFT_COUNTER",
+            "scale_notes": "cookie-jar-height and cookie-diameter from relative_scale.json",
             "custom_state": null
           }
         ],
@@ -120,10 +120,10 @@
           {
             "prop_id": "cookie-jar",
             "canonical_asset_id": "prop-cookie-jar-v1",
-            "state": "OPEN",
-            "position": "counter; lid beside jar",
-            "scale_notes": "cookies and jar must not become oversized; derive from canonical reference",
-            "custom_state": "lid removed; OPEN visual master"
+            "state": "OPEN_LID_RIGHT",
+            "position": "LEFT_COUNTER; lid beside jar RIGHT of jar",
+            "scale_notes": "cookie-jar-height and cookie-diameter from relative_scale.json",
+            "custom_state": "OPEN_LID_RIGHT — episode visual master pending golden upload"
           }
         ],
         "dialogue": null,
@@ -131,7 +131,7 @@
         "previous_frame_id": "s01e02_f03",
         "next_frame_id": "s01e02_f04",
         "notes": [
-          "Episode 2 Frame 3 is OPEN-state visual master until a reference image replaces it."
+          "Episode 2 Frame 3 OPEN cookie-jar continuity; golden reference REFERENCE_REQUIRED until uploaded."
         ]
       },
       "continuity_from": "s01e02_f02",
@@ -167,10 +167,10 @@
           {
             "prop_id": "cookie-jar",
             "canonical_asset_id": "prop-cookie-jar-v1",
-            "state": "OPEN",
-            "position": "counter; lid beside jar",
-            "scale_notes": "cookies and jar must not become oversized; derive from canonical reference",
-            "custom_state": "lid removed; OPEN visual master"
+            "state": "OPEN_LID_RIGHT",
+            "position": "LEFT_COUNTER; lid beside jar RIGHT of jar",
+            "scale_notes": "cookie-jar-height and cookie-diameter from relative_scale.json",
+            "custom_state": "OPEN_LID_RIGHT — episode visual master pending golden upload"
           }
         ],
         "dialogue": null,
@@ -178,7 +178,7 @@
         "previous_frame_id": "s01e02_f04",
         "next_frame_id": "s01e02_f05",
         "notes": [
-          "Episode 2 Frame 3 is OPEN-state visual master until a reference image replaces it."
+          "Episode 2 Frame 3 OPEN cookie-jar continuity; golden reference REFERENCE_REQUIRED until uploaded."
         ]
       },
       "continuity_from": "s01e02_f03",
@@ -223,10 +223,10 @@
           {
             "prop_id": "cookie-jar",
             "canonical_asset_id": "prop-cookie-jar-v1",
-            "state": "OPEN",
-            "position": "counter; lid beside jar",
-            "scale_notes": "cookies and jar must not become oversized; derive from canonical reference",
-            "custom_state": "lid removed; OPEN visual master"
+            "state": "OPEN_LID_RIGHT",
+            "position": "LEFT_COUNTER; lid beside jar RIGHT of jar",
+            "scale_notes": "cookie-jar-height and cookie-diameter from relative_scale.json",
+            "custom_state": "OPEN_LID_RIGHT — episode visual master pending golden upload"
           }
         ],
         "dialogue": "LIKKLE JAY!",
@@ -279,10 +279,10 @@
           {
             "prop_id": "cookie-jar",
             "canonical_asset_id": "prop-cookie-jar-v1",
-            "state": "OPEN",
-            "position": "counter; lid beside jar",
-            "scale_notes": "cookies and jar must not become oversized; derive from canonical reference",
-            "custom_state": "lid removed; OPEN visual master"
+            "state": "OPEN_LID_RIGHT",
+            "position": "LEFT_COUNTER; lid beside jar RIGHT of jar",
+            "scale_notes": "cookie-jar-height and cookie-diameter from relative_scale.json",
+            "custom_state": "OPEN_LID_RIGHT — episode visual master pending golden upload"
           }
         ],
         "dialogue": null,
@@ -335,10 +335,10 @@
           {
             "prop_id": "cookie-jar",
             "canonical_asset_id": "prop-cookie-jar-v1",
-            "state": "OPEN",
-            "position": "counter; lid beside jar",
-            "scale_notes": "cookies and jar must not become oversized; derive from canonical reference",
-            "custom_state": "lid removed; OPEN visual master"
+            "state": "OPEN_LID_RIGHT",
+            "position": "LEFT_COUNTER; lid beside jar RIGHT of jar",
+            "scale_notes": "cookie-jar-height and cookie-diameter from relative_scale.json",
+            "custom_state": "OPEN_LID_RIGHT — episode visual master pending golden upload"
           }
         ],
         "dialogue": "MI NEVA DO NUTTN!",

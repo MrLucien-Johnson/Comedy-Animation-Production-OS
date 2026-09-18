@@ -9,6 +9,8 @@ from uuid import uuid4
 from pydantic import BaseModel, Field, field_validator
 
 from capos.core.status import (
+    CanonicalAssetType,
+    CanonStatus,
     ComedyBeat,
     FrameType,
     ProductionStage,
@@ -33,21 +35,107 @@ class CanonicalAssetRef(BaseModel):
     """Versioned canonical asset pointer. Never silently overwrite approved assets."""
 
     asset_id: str  # e.g. character-likkle-jay-v1
-    kind: str  # character | location | prop | outfit | expression | turnaround
+    id: str | None = None  # alias of asset_id for production registry
+    type: CanonicalAssetType | None = None
+    kind: str = "character"  # legacy short kind; prefer type
+    series_id: str = ""
     slug: str
     version: int = 1
-    status: StageStatus = StageStatus.DRAFT
-    path: str | None = None
+    status: StageStatus | CanonStatus = StageStatus.DRAFT
+    source: str = "registry"  # registry | generated | imported | user_upload | reference_required
+    file: str | None = None  # preferred path field
+    path: str | None = None  # legacy alias of file
     checksum: str | None = None
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+    approved_at: datetime | None = None
+    supersedes: str | None = None
     superseded_by: str | None = None
     locked_traits: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=utcnow)
-    updated_at: datetime = Field(default_factory=utcnow)
+    is_golden: bool = False
+    reference_required: bool = False
+    reference_required_reason: str | None = None
+
+    def model_post_init(self, __context: Any) -> None:  # noqa: N805
+        if self.id is None:
+            self.id = self.asset_id
+        if self.file is None and self.path is not None:
+            self.file = self.path
+        if self.path is None and self.file is not None:
+            self.path = self.file
+
+    @property
+    def effective_path(self) -> str | None:
+        return self.file or self.path
+
+    def has_image_file(self) -> bool:
+        if not self.effective_path:
+            return False
+        from pathlib import Path
+
+        return Path(self.effective_path).is_file()
+
+    def is_production_lockable(self) -> bool:
+        status = self.status.value if hasattr(self.status, "value") else str(self.status)
+        return status == CanonStatus.APPROVED.value or status == StageStatus.APPROVED.value
 
     def bump_version_id(self) -> str:
         base = self.asset_id.rsplit("-v", 1)[0]
         return f"{base}-v{self.version + 1}"
+
+
+class ScaleUnit(BaseModel):
+    """Normalized relative scale — Jay height = 1.0 baseline unit."""
+
+    name: str
+    relative_to: str = "likkle-jay-height"
+    value: float
+    notes: str = ""
+
+
+class ScaleManifest(BaseModel):
+    series_id: str
+    baseline_character: str = "likkle-jay"
+    baseline_unit_name: str = "likkle-jay-height"
+    units: list[ScaleUnit] = Field(default_factory=list)
+
+
+class SpatialRegion(BaseModel):
+    region_id: str
+    label: str
+    x: float = 0.0  # normalized 0–1
+    y: float = 0.0
+    w: float = 0.1
+    h: float = 0.1
+    locked: bool = True
+    notes: str = ""
+
+
+class LocationSpace(BaseModel):
+    location_id: str
+    series_id: str
+    camera_baseline: str = "straight-on"
+    immutable_geometry: list[str] = Field(default_factory=list)
+    allowed_movable: list[str] = Field(default_factory=list)
+    regions: list[SpatialRegion] = Field(default_factory=list)
+    palette: list[str] = Field(default_factory=list)
+    lighting: str = ""
+
+
+class GoldenFrameRecord(BaseModel):
+    golden_id: str
+    series_id: str
+    episode_id: str | None = None
+    frame_id: str | None = None
+    source_asset_id: str | None = None
+    file: str | None = None
+    status: CanonStatus = CanonStatus.REFERENCE_REQUIRED
+    governs: list[str] = Field(default_factory=list)
+    notes: str = ""
+    reference_required_reason: str | None = None
+    created_at: datetime = Field(default_factory=utcnow)
+    approved_at: datetime | None = None
 
 
 class CameraState(BaseModel):
@@ -146,6 +234,22 @@ class QACheckResult(BaseModel):
     status: QAResultStatus = QAResultStatus.NOT_CHECKED
     message: str = ""
     details: dict[str, Any] = Field(default_factory=dict)
+
+
+class ProductionReadinessReport(BaseModel):
+    series_id: str
+    season_id: str = "s01"
+    ready: bool = False
+    gate: str = "SEASON_PRODUCTION_READY"
+    checks: list[QACheckResult] = Field(default_factory=list)
+    missing: list[str] = Field(default_factory=list)
+    awaiting_approval: list[str] = Field(default_factory=list)
+    approved: list[str] = Field(default_factory=list)
+    provider_status: dict[str, str] = Field(default_factory=dict)
+    engineering_ready: bool = True
+    content_ready: bool = False
+    season_production_ready: bool = False
+    notes: list[str] = Field(default_factory=list)
 
 
 class QAReport(BaseModel):

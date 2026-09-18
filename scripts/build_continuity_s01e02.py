@@ -81,7 +81,9 @@ def main() -> None:
             if "auntie-bev" not in ids:
                 fr.continuity.characters.append(bev)
                 fr.characters = [c.character_id for c in fr.continuity.characters]
-                fr.character_reference_ids = [c.canonical_asset_id for c in fr.continuity.characters]
+                fr.character_reference_ids = [
+                    c.canonical_asset_id for c in fr.continuity.characters
+                ]
 
     path = write_continuity_file("likkle-jay", "s01e02", seq)
     print(f"Wrote {path}")

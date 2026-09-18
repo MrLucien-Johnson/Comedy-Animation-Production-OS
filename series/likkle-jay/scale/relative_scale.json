@@ -1,0 +1,43 @@
+{
+  "series_id": "likkle-jay",
+  "baseline_character": "likkle-jay",
+  "baseline_unit_name": "likkle-jay-height",
+  "units": [
+    {
+      "name": "likkle-jay-height",
+      "relative_to": "likkle-jay-height",
+      "value": 1.0,
+      "notes": ""
+    },
+    {
+      "name": "counter-height",
+      "relative_to": "likkle-jay-height",
+      "value": 0.55,
+      "notes": "Kitchen counter top relative to Jay standing height"
+    },
+    {
+      "name": "cookie-jar-height",
+      "relative_to": "counter-height",
+      "value": 0.35,
+      "notes": "Jar must not dominate the counter; derive from this ratio"
+    },
+    {
+      "name": "cookie-diameter",
+      "relative_to": "cookie-jar-height",
+      "value": 0.28,
+      "notes": "Cookies small relative to jar opening — never oversized"
+    },
+    {
+      "name": "fridge-height",
+      "relative_to": "likkle-jay-height",
+      "value": 1.35,
+      "notes": "Cream fridge on RIGHT"
+    },
+    {
+      "name": "auntie-bev-height",
+      "relative_to": "likkle-jay-height",
+      "value": 1.15,
+      "notes": "Adult stout silhouette taller than Jay"
+    }
+  ]
+}

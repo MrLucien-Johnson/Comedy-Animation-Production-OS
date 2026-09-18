@@ -1,0 +1,77 @@
+{
+  "location_id": "kitchen",
+  "series_id": "likkle-jay",
+  "camera_baseline": "straight-on cartoon baseline; do not mirror",
+  "immutable_geometry": [
+    "wall geometry",
+    "counter on LEFT",
+    "refrigerator on RIGHT",
+    "cabinet style with round handles",
+    "floor tile family",
+    "camera baseline"
+  ],
+  "allowed_movable": [
+    "cookie-jar",
+    "wooden-spoon",
+    "small-dishes"
+  ],
+  "regions": [
+    {
+      "region_id": "LEFT_COUNTER",
+      "label": "Counter surface on LEFT",
+      "x": 0.05,
+      "y": 0.45,
+      "w": 0.4,
+      "h": 0.25,
+      "locked": true,
+      "notes": "Cookie jar default region"
+    },
+    {
+      "region_id": "RIGHT_FRIDGE",
+      "label": "Cream refrigerator RIGHT edge",
+      "x": 0.7,
+      "y": 0.15,
+      "w": 0.25,
+      "h": 0.7,
+      "locked": true,
+      "notes": ""
+    },
+    {
+      "region_id": "CABINETS_UPPER",
+      "label": "Upper wooden cabinets",
+      "x": 0.05,
+      "y": 0.05,
+      "w": 0.6,
+      "h": 0.25,
+      "locked": true,
+      "notes": ""
+    },
+    {
+      "region_id": "FLOOR",
+      "label": "Terracotta/brown tiled floor",
+      "x": 0.0,
+      "y": 0.75,
+      "w": 1.0,
+      "h": 0.25,
+      "locked": true,
+      "notes": ""
+    },
+    {
+      "region_id": "LID_BESIDE_JAR",
+      "label": "Lid placement beside jar when OPEN",
+      "x": 0.28,
+      "y": 0.48,
+      "w": 0.12,
+      "h": 0.1,
+      "locked": false,
+      "notes": "Used for OPEN_LID_RIGHT / OPEN_LID_LEFT episode states"
+    }
+  ],
+  "palette": [
+    "warm beige/orange walls",
+    "terracotta/brown floor",
+    "wood cabinets",
+    "cream fridge"
+  ],
+  "lighting": "warm indoor kitchen daylight"
+}

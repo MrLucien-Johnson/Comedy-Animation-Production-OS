@@ -1,0 +1,42 @@
+{
+  "location_id": "yard",
+  "series_id": "likkle-jay",
+  "camera_baseline": "straight-on exterior baseline",
+  "immutable_geometry": [
+    "fence line",
+    "house exterior side"
+  ],
+  "allowed_movable": [
+    "hose",
+    "bucket",
+    "toys"
+  ],
+  "regions": [
+    {
+      "region_id": "LAWN",
+      "label": "Grass lawn",
+      "x": 0.1,
+      "y": 0.5,
+      "w": 0.8,
+      "h": 0.4,
+      "locked": true,
+      "notes": ""
+    },
+    {
+      "region_id": "FENCE",
+      "label": "Fence line",
+      "x": 0.0,
+      "y": 0.25,
+      "w": 1.0,
+      "h": 0.2,
+      "locked": true,
+      "notes": ""
+    }
+  ],
+  "palette": [
+    "green grass",
+    "warm sky",
+    "wooden fence"
+  ],
+  "lighting": "warm daylight"
+}

@@ -1,0 +1,41 @@
+{
+  "location_id": "jay-bedroom",
+  "series_id": "likkle-jay",
+  "camera_baseline": "straight-on bedroom baseline",
+  "immutable_geometry": [
+    "bed side",
+    "window placement"
+  ],
+  "allowed_movable": [
+    "toys",
+    "blanket",
+    "books"
+  ],
+  "regions": [
+    {
+      "region_id": "BED",
+      "label": "Bed",
+      "x": 0.15,
+      "y": 0.45,
+      "w": 0.5,
+      "h": 0.35,
+      "locked": true,
+      "notes": ""
+    },
+    {
+      "region_id": "DRESSER",
+      "label": "Dresser",
+      "x": 0.7,
+      "y": 0.4,
+      "w": 0.25,
+      "h": 0.35,
+      "locked": true,
+      "notes": ""
+    }
+  ],
+  "palette": [
+    "warm soft walls",
+    "restrained colour accents"
+  ],
+  "lighting": "soft indoor"
+}

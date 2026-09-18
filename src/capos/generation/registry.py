@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from capos.core.config import get_config
@@ -56,3 +57,43 @@ def try_register_optional_backends() -> None:
         register_backend("null", NullBackend)
     except Exception:
         pass
+    try:
+        from capos.generation.local_backend import LocalDiffusionBackend
+
+        register_backend("local", LocalDiffusionBackend)
+    except Exception:
+        pass
+
+
+def record_provider_refusal(
+    *,
+    backend: str,
+    prompt: str,
+    refusal: str,
+    log_dir: Path | None = None,
+) -> Path:
+    """Persist PROVIDER_REFUSED events — never claim success."""
+    import json
+    from datetime import UTC, datetime
+
+    from capos.core.paths import project_root
+
+    base = log_dir or (project_root() / "logs" / "provider_refusals")
+    base.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    path = base / f"{stamp}_{backend}.json"
+    path.write_text(
+        json.dumps(
+            {
+                "status": "PROVIDER_REFUSED",
+                "backend": backend,
+                "refusal": refusal,
+                "prompt_preview": prompt[:2000],
+                "recorded_at": datetime.now(UTC).isoformat(),
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return path

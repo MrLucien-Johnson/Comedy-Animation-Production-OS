@@ -1,15 +1,17 @@
-"""CAPOS Production UI — Streamlit dashboard."""
+"""CAPOS Production UI — Streamlit dashboard with Canon workflow."""
 
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import streamlit as st
 
 from capos import __version__
+from capos.canon.bootstrap import bootstrap_likkle_jay_canon
 from capos.core.paths import project_root, series_dir
 from capos.core.schemas import WATERMARK_EXACT
-from capos.core.status import StageStatus
+from capos.core.status import CanonStatus, StageStatus
 from capos.domain.series import (
     list_series,
     load_episode_brief,
@@ -18,7 +20,10 @@ from capos.domain.series import (
     load_storyboard,
 )
 from capos.export.ffmpeg_export import ffmpeg_available
-from capos.generation.registry import health_all, try_register_optional_backends
+from capos.generation.provider_status import provider_dashboard_status
+from capos.generation.registry import try_register_optional_backends
+from capos.pipeline.readiness import evaluate_season_production_ready
+from capos.references.golden import GoldenFrameStore
 from capos.references.versioning import ReferenceStore
 
 st.set_page_config(page_title="CAPOS", layout="wide")
@@ -33,15 +38,19 @@ nav = st.sidebar.radio(
     [
         "Dashboard",
         "Series",
+        "Canon",
+        "Characters",
+        "Locations",
+        "Props",
         "Episodes",
         "Script",
         "Storyboard",
         "References",
-        "Characters",
-        "Locations",
-        "Props",
+        "Golden Frames",
         "Frames / Continuity",
         "QA",
+        "Providers",
+        "Readiness Gate",
         "Animation",
         "Audio",
         "Exports",
@@ -51,23 +60,25 @@ nav = st.sidebar.radio(
 series_ids = list_series(root=root)
 series_id = st.sidebar.selectbox("Series", series_ids or ["likkle-jay"])
 
+
+def _status_badge(status: object) -> str:
+    return status.value if hasattr(status, "value") else str(status)
+
+
 if nav == "Dashboard":
     st.subheader("Production dashboard")
-    cols = st.columns(4)
-    ff_ok, ff = ffmpeg_available()
+    report = evaluate_season_production_ready(series_id, root=root)
+    cols = st.columns(5)
     cols[0].metric("Series", len(series_ids))
-    cols[1].metric("FFmpeg", "yes" if ff_ok else "no")
-    cols[2].metric("Engineering", "partial")
-    cols[3].metric("Content prod", "not claimed")
-    st.write("Backend health (honest availability):")
-    st.json(health_all())
-    gates_path = root / "config" / "production_gates.json"
-    if gates_path.is_file():
-        st.write("Production gates:")
-        st.json(json.loads(gates_path.read_text()))
+    cols[1].metric("FFmpeg", "yes" if ffmpeg_available()[0] else "no")
+    cols[2].metric("Engineering", "ready" if report.engineering_ready else "no")
+    cols[3].metric("Content", "ready" if report.content_ready else "NOT READY")
+    cols[4].metric("Season gate", "PASS" if report.season_production_ready else "FAIL")
+    st.write("Provider availability:")
+    st.json(provider_dashboard_status())
     st.info(
-        "Statuses to watch: what exists, what is approved, what failed, "
-        "what is missing, what needs regeneration."
+        "Do not mass-generate episodes until SEASON_PRODUCTION_READY passes. "
+        "Canon → Approval → Golden references → Production."
     )
 
 elif nav == "Series":
@@ -77,6 +88,95 @@ elif nav == "Series":
         bible = series_dir(series_id, root=root) / "BIBLE.md"
         if bible.is_file():
             st.markdown(bible.read_text())
+
+elif nav == "Canon":
+    st.subheader("Canonical production registry")
+    if st.button("Bootstrap / refresh Likkle Jay canon metadata"):
+        result = bootstrap_likkle_jay_canon(root=root)
+        st.success(result["note"])
+        st.json({k: result[k] for k in result if k != "registry_entries"})
+        st.caption(f"{len(result['registry_entries'])} registry entries")
+    store = ReferenceStore(series_id, root=root)
+    assets = store.list_assets()
+    st.write(f"{len(assets)} assets")
+    for a in assets:
+        with st.expander(f"{a.asset_id} · {_status_badge(a.status)}"):
+            cols = st.columns([1, 2])
+            if a.effective_path and Path(a.effective_path).is_file():
+                cols[0].image(a.effective_path, use_container_width=True)
+            else:
+                cols[0].warning("No image file — not claimable as production art")
+            cols[1].json(
+                {
+                    "type": _status_badge(a.type) if a.type else a.kind,
+                    "version": a.version,
+                    "status": _status_badge(a.status),
+                    "source": a.source,
+                    "file": a.effective_path,
+                    "checksum": a.checksum,
+                    "reference_required": a.reference_required,
+                    "locked_traits": a.locked_traits,
+                }
+            )
+            c1, c2, c3, c4 = st.columns(4)
+            if c1.button("APPROVE", key=f"ap_{a.asset_id}"):
+                try:
+                    store.approve(a.asset_id)
+                    st.rerun()
+                except Exception as exc:
+                    st.error(str(exc))
+            if c2.button("REJECT", key=f"rj_{a.asset_id}"):
+                store.reject(a.asset_id)
+                st.rerun()
+            if c3.button("LOCK AS CANON", key=f"lk_{a.asset_id}"):
+                try:
+                    store.lock_as_canon(a.asset_id)
+                    st.rerun()
+                except Exception as exc:
+                    st.error(str(exc))
+            upload = c4.file_uploader(
+                "Import image", type=["png", "jpg", "webp"], key=f"up_{a.asset_id}"
+            )
+            if upload is not None:
+                dest = (
+                    series_dir(series_id, root=root)
+                    / "references"
+                    / "imports"
+                    / a.asset_id
+                    / upload.name
+                )
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(upload.getvalue())
+                store.attach_file(a.asset_id, dest, source="user_upload")
+                st.success(f"Attached {dest.name} as CANDIDATE")
+                st.rerun()
+
+elif nav == "Characters":
+    st.subheader("Characters")
+    store = ReferenceStore(series_id, root=root)
+    for a in store.list_assets():
+        if a.kind in {"character", "turnaround", "expression", "outfit"} or (
+            a.type and ("CHARACTER" in _status_badge(a.type) or "OUTFIT" in _status_badge(a.type))
+        ):
+            st.write(f"`{a.asset_id}` — {_status_badge(a.status)} — file={a.effective_path}")
+
+elif nav == "Locations":
+    st.subheader("Locations")
+    store = ReferenceStore(series_id, root=root)
+    for a in store.list_assets(kind="location"):
+        st.write(f"`{a.asset_id}` — {_status_badge(a.status)}")
+    spatial = series_dir(series_id, root=root) / "spatial"
+    if spatial.is_dir():
+        for f in sorted(spatial.glob("*.json")):
+            st.markdown(f"**Spatial:** {f.stem}")
+            st.json(json.loads(f.read_text()))
+
+elif nav == "Props":
+    st.subheader("Props")
+    store = ReferenceStore(series_id, root=root)
+    for a in store.list_assets():
+        if a.kind in {"prop", "prop-state"}:
+            st.write(f"`{a.asset_id}` — {_status_badge(a.status)} — {a.metadata}")
 
 elif nav == "Episodes":
     st.subheader("Episodes")
@@ -89,58 +189,92 @@ elif nav == "Episodes":
 
 elif nav == "Script":
     ep = st.selectbox("Episode", ["s01e01", "s01e02", "s01e03"])
-    script = load_script(series_id, ep, root=root)
-    st.json(script.model_dump())
+    st.json(load_script(series_id, ep, root=root).model_dump())
 
 elif nav == "Storyboard":
     ep = st.selectbox("Episode", ["s01e01", "s01e02", "s01e03"], key="sb")
-    beats = load_storyboard(series_id, ep, root=root)
-    st.json([b.model_dump() for b in beats])
+    st.json([b.model_dump() for b in load_storyboard(series_id, ep, root=root)])
 
 elif nav == "References":
     store = ReferenceStore(series_id, root=root)
-    assets = store.list_assets()
-    st.write(f"{len(assets)} canonical assets")
-    for a in assets:
-        st.write(f"`{a.asset_id}` — {a.status} — path={a.path}")
+    for a in store.list_assets():
+        st.write(f"`{a.asset_id}` — {_status_badge(a.status)} — path={a.effective_path}")
 
-elif nav in {"Characters", "Locations", "Props"}:
-    kind = nav.lower()
-    base = series_dir(series_id, root=root) / kind
-    if base.is_dir():
-        for p in sorted(base.iterdir()):
-            if p.is_dir():
-                st.markdown(f"### {p.name}")
-                for f in p.glob("*.json"):
-                    st.json(json.loads(f.read_text()))
+elif nav == "Golden Frames":
+    st.subheader("Golden references")
+    gstore = GoldenFrameStore(series_id, root=root)
+    gstore.ensure_s01e02_open_jar_placeholder()
+    for g in gstore.list_all():
+        with st.expander(f"{g.golden_id} · {_status_badge(g.status)}"):
+            st.write(g.notes)
+            if g.reference_required_reason:
+                st.warning(g.reference_required_reason)
+            if g.file and Path(g.file).is_file():
+                st.image(g.file)
+            upload = st.file_uploader(
+                "Upload golden reference image",
+                type=["png", "jpg", "webp"],
+                key=f"gup_{g.golden_id}",
+            )
+            if upload is not None:
+                dest = (
+                    series_dir(series_id, root=root)
+                    / "golden"
+                    / "imports"
+                    / g.golden_id
+                    / upload.name
+                )
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(upload.getvalue())
+                gstore.attach_and_candidate(g.golden_id, dest)
+                st.success("Attached as CANDIDATE")
+                st.rerun()
+            if st.button("LOCK AS GOLDEN REFERENCE", key=f"glock_{g.golden_id}"):
+                try:
+                    gstore.lock_as_golden(g.golden_id)
+                    st.rerun()
+                except Exception as exc:
+                    st.error(str(exc))
 
 elif nav == "Frames / Continuity":
     cont = series_dir(series_id, root=root) / "episodes" / "s01e02" / "continuity.json"
     if cont.is_file():
         st.json(json.loads(cont.read_text()))
     else:
-        st.warning("No continuity.json yet — run continuity build / compile-e2 workflow.")
+        st.warning("No continuity.json yet.")
 
 elif nav == "QA":
     st.write("QA outcomes: NOT_CHECKED | CHECKED | PASS | FAIL | REQUIRES_HUMAN_REVIEW")
-    st.write("Export is fail-closed unless all required QA = PASS or explicit human override.")
+    st.write(
+        "Visual similarity uses perceptual hash heuristics → REVIEW_REQUIRED, never fake identity PASS."
+    )
     st.code(f"Watermark must be exactly: {WATERMARK_EXACT}")
     st.code("Cookie jar label must be exactly: COOKIES")
 
+elif nav == "Providers":
+    st.subheader("Image providers")
+    st.json(provider_dashboard_status())
+    st.caption("Prefer reference-based edit over full regeneration when supported.")
+
+elif nav == "Readiness Gate":
+    st.subheader("SEASON_PRODUCTION_READY")
+    report = evaluate_season_production_ready(series_id, root=root)
+    st.metric("Gate", "PASS" if report.season_production_ready else "FAIL")
+    st.json(report.model_dump(mode="json"))
+
 elif nav == "Animation":
-    st.write("Simple animation plan support: pans, zoom, parallax, blink, mouth, arm, prop motion.")
-    st.caption("No animation is claimed rendered unless an output file exists.")
+    st.write("Simple animation plan support. No render claimed unless an output file exists.")
 
 elif nav == "Audio":
-    st.write("Provider-neutral voice / music / SFX interfaces. Null backend reports unavailable.")
-    st.write("Subtitles: SRT/VTT from approved script — never OCR.")
+    st.write("Provider-neutral voice / music / SFX. Subtitles from approved script — never OCR.")
 
 elif nav == "Exports":
-    st.write("FFmpeg slideshow assembly with reframe metadata (1:1, 9:16, 16:9, 4:5).")
-    st.write("Blocked when QA unresolved unless human override.")
+    st.write("FFmpeg slideshow with reframe metadata. Blocked when QA unresolved.")
     ok, detail = ffmpeg_available()
     st.write(f"ffmpeg available: {ok} ({detail})")
 
 st.sidebar.divider()
 st.sidebar.caption(f"Root: {root}")
-st.sidebar.caption(f"Default series status sample: {StageStatus.DRAFT.value}")
+st.sidebar.caption(
+    f"Sample status: {StageStatus.DRAFT.value} / {CanonStatus.REFERENCE_REQUIRED.value}"
+)

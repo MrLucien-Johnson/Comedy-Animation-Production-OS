@@ -16,6 +16,8 @@ from capos.prompts.style import (
     NEGATIVE_CONSTRAINTS,
     NO_BAKED_TEXT,
 )
+from capos.scale.system import compile_scale_prompt_block, load_scale
+from capos.spatial.layout import compile_spatial_prompt_block, load_location_space
 
 
 class PromptCompiler:
@@ -121,18 +123,47 @@ class PromptCompiler:
                 f"do NOT render lettering. Approved text (for planning only): {frame.dialogue!r}"
             )
 
+        scale_block = ""
+        spatial_block = ""
+        try:
+            scale_block = compile_scale_prompt_block(load_scale(self.series_id, root=self.root))
+        except Exception:
+            scale_block = ""
+        if location_id:
+            try:
+                space = load_location_space(self.series_id, location_id, root=self.root)
+                prop_regions = {}
+                for p in frame.continuity.props:
+                    # Prefer explicit LEFT_COUNTER style positions
+                    if p.position and p.position.split(";")[0].strip().isupper():
+                        prop_regions[p.prop_id] = p.position.split(";")[0].strip()
+                    elif p.prop_id == "cookie-jar":
+                        prop_regions[p.prop_id] = "LEFT_COUNTER"
+                spatial_block = compile_spatial_prompt_block(space, prop_regions=prop_regions)
+            except Exception:
+                spatial_block = ""
+
+        edit_hint = (
+            "GENERATION PRINCIPLE: Prefer reference-based EDIT/VARIATION/INPAINT over full "
+            "regeneration when only expression, arms, or speech change. Preserve background, "
+            "camera, hair, clothes, jar identity/scale/position."
+        )
+
         positive_parts = [
             BASE_STYLE.strip(),
             FAMILY_FRIENDLY.strip(),
             "\n\n".join(char_blocks),
             self._location_lock(location_id),
             "\n\n".join(prop_blocks),
+            scale_block,
+            spatial_block,
             f"FRAME: {frame.frame_id} type={frame.frame_type.value}",
             f"ACTION: {frame.action}",
             f"EXPRESSION: {frame.expression}",
             f"CAMERA: {frame.camera.angle}; {frame.camera.framing}; {frame.camera.lens_notes}",
             "\n".join(continuity_req),
             dialogue_note,
+            edit_hint,
             NO_BAKED_TEXT.strip(),
             extra_positive.strip(),
         ]

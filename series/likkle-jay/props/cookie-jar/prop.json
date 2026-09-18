@@ -5,8 +5,26 @@
   "description": "Transparent glass jar with rounded lid. Small golden-brown cookies inside when filled.",
   "label": "COOKIES",
   "scale_rules": "Cookies must NOT become oversized. Jar must NOT become oversized. Prop scale derives from canonical reference.",
-  "states": ["CLOSED", "OPEN", "LID_BESIDE_JAR", "EMPTY", "PARTIALLY_FULL"],
+  "states": [
+    "CLOSED",
+    "OPEN",
+    "OPEN_LID_RIGHT",
+    "OPEN_LID_LEFT",
+    "LID_BESIDE_JAR",
+    "EMPTY",
+    "PARTIALLY_FULL"
+  ],
   "identity_lock": "Episode-specific states can override state but NOT identity.",
-  "must_remain_constant": ["glass jar identity", "rounded lid design", "COOKIES label spelling", "relative cookie scale"],
-  "prohibited_variations": ["COOKIE label", "oversized cookies", "oversized jar", "jar material redesign"]
+  "must_remain_constant": [
+    "glass jar identity",
+    "rounded lid design",
+    "COOKIES label spelling",
+    "relative cookie scale"
+  ],
+  "prohibited_variations": [
+    "COOKIE label",
+    "oversized cookies",
+    "oversized jar",
+    "jar material redesign"
+  ]
 }

@@ -6,11 +6,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from capos.audio.interfaces import cues_from_script, write_srt, write_vtt
 from capos.composition.text import apply_speech_bubble, apply_watermark, compose_cover_title
 from capos.core.schemas import WATERMARK_EXACT
 from capos.domain.series import load_script
 from capos.generation.registry import get_backend
-from capos.audio.interfaces import cues_from_script, write_srt, write_vtt
 
 
 def main() -> None:

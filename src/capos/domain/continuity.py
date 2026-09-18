@@ -181,13 +181,13 @@ def cookie_jar_episode2_plan() -> dict[str, dict[str, Any]]:
         "prop_updates": [
             {
                 "prop_id": "cookie-jar",
-                "state": PropState.OPEN.value,
-                "position": "counter; lid beside jar",
-                "custom_state": "lid removed; OPEN visual master",
+                "state": PropState.OPEN_LID_RIGHT.value,
+                "position": "LEFT_COUNTER; lid beside jar RIGHT of jar",
+                "custom_state": "OPEN_LID_RIGHT — episode visual master pending golden upload",
             }
         ],
         "notes": [
-            "Episode 2 Frame 3 is OPEN-state visual master until a reference image replaces it."
+            "Episode 2 Frame 3 OPEN cookie-jar continuity; golden reference REFERENCE_REQUIRED until uploaded."
         ],
     }
     return changes
@@ -215,8 +215,8 @@ def initial_kitchen_continuity() -> ContinuityState:
                 prop_id="cookie-jar",
                 canonical_asset_id="prop-cookie-jar-v1",
                 state=PropState.CLOSED,
-                position="counter left area",
-                scale_notes="cookies and jar must not become oversized; derive from canonical reference",
+                position="LEFT_COUNTER",
+                scale_notes="cookie-jar-height and cookie-diameter from relative_scale.json",
             )
         ],
     )
