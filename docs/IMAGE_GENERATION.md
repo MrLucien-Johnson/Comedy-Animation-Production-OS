@@ -15,9 +15,17 @@ Backends register in `capos.generation.registry`. Availability is probed — nev
 
 | Backend | Notes |
 |---------|-------|
-| `mock` | Always available; labeled non-production |
+| `mock` | Always available; **non-production** — cannot lock as canon |
 | `huggingface` | Requires `HF_TOKEN` + `huggingface_hub` |
-| `null` | Always unavailable (for tests) |
+| `local` | Requires torch/diffusers + configured weights |
+| `comfyui` | Requires `CAPOS_COMFYUI_URL` (+ workflow path for generate) |
+| `null` | Always unavailable (tests) |
+
+## Capability matrix
+
+Providers report: `TEXT_TO_IMAGE`, `IMAGE_TO_IMAGE`, `REFERENCE_IMAGE`, `INPAINT`, `OUTPAINT`, `CONTROL_IMAGE`, `SEED`, `NEGATIVE_PROMPT`.
+
+`select_production_provider()` never returns mock.
 
 ## Prefer reference edits
 
