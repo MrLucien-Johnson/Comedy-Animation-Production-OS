@@ -1,0 +1,11 @@
+{
+  "beats": [
+    {"beat_id": "b1", "comedy_beat": "SETUP", "frame_id": "s01e02_f01", "summary": "Kitchen establish; closed cookie jar on counter", "location_id": "kitchen", "characters": ["likkle-jay"], "props": ["cookie-jar"]},
+    {"beat_id": "b2", "comedy_beat": "TEMPTATION", "frame_id": "s01e02_f02", "summary": "Jay eyes the closed jar", "location_id": "kitchen", "characters": ["likkle-jay"], "props": ["cookie-jar"], "dialogue_line_id": "s01e02_l01"},
+    {"beat_id": "b3", "comedy_beat": "ESCALATION", "frame_id": "s01e02_f03", "summary": "Jar OPEN; lid beside jar (OPEN visual master)", "location_id": "kitchen", "characters": ["likkle-jay"], "props": ["cookie-jar"]},
+    {"beat_id": "b4", "comedy_beat": "ESCALATION", "frame_id": "s01e02_f04", "summary": "Jay reaching / cookies disturbed", "location_id": "kitchen", "characters": ["likkle-jay"], "props": ["cookie-jar"]},
+    {"beat_id": "b5", "comedy_beat": "DISCOVERY", "frame_id": "s01e02_f05", "summary": "Auntie Bev appears in doorway", "location_id": "kitchen", "characters": ["likkle-jay", "auntie-bev"], "props": ["cookie-jar"], "dialogue_line_id": "s01e02_l02"},
+    {"beat_id": "b6", "comedy_beat": "REACTION", "frame_id": "s01e02_f06", "summary": "Jay panic reaction", "location_id": "kitchen", "characters": ["likkle-jay", "auntie-bev"], "props": ["cookie-jar"]},
+    {"beat_id": "b7", "comedy_beat": "PUNCHLINE", "frame_id": "s01e02_f07", "summary": "Comic denial punchline", "location_id": "kitchen", "characters": ["likkle-jay", "auntie-bev"], "props": ["cookie-jar"], "dialogue_line_id": "s01e02_l03"}
+  ]
+}

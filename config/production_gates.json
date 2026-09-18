@@ -1,0 +1,14 @@
+{
+  "gates": {
+    "SERIES_BIBLE_READY": false,
+    "CANONICAL_REFS_APPROVED": false,
+    "PILOT_EPISODE_APPROVED": false,
+    "EXPORT_READY": false
+  },
+  "notes": {
+    "SERIES_BIBLE_READY": "Likkle Jay bible JSON present; reference images not yet approved",
+    "CANONICAL_REFS_APPROVED": "Canonical asset metadata exists; image paths null until generated/approved",
+    "PILOT_EPISODE_APPROVED": "No human-approved episode frames yet",
+    "EXPORT_READY": "Blocked until QA pass or human override"
+  }
+}

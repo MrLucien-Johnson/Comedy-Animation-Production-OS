@@ -1,0 +1,7 @@
+{
+  "master_aspect": "1:1",
+  "supported_aspects": ["1:1", "9:16", "16:9", "4:5"],
+  "fps_slideshow": 2,
+  "require_qa_pass_or_override": true,
+  "ffmpeg_required": true
+}

@@ -1,0 +1,21 @@
+{
+  "series_id": "likkle-jay",
+  "title": "Likkle Jay",
+  "slug": "likkle-jay",
+  "logline": "A warm family-friendly cartoon comedy about Likkle Jay's everyday mischief and Auntie Bev's comic reckoning.",
+  "visual_style": {
+    "medium": "fictional 2D cartoon",
+    "tone": "warm, family-friendly",
+    "outlines": "bold dark",
+    "shading": "flat",
+    "texture": "slight warm/vintage",
+    "aspect_ratio_master": "1:1"
+  },
+  "watermark": "MRLUCIENJOHNSON",
+  "aspect_ratio_master": "1:1",
+  "characters": ["likkle-jay", "auntie-bev"],
+  "locations": ["kitchen", "living-room", "yard", "jay-bedroom"],
+  "props": ["cookie-jar"],
+  "seasons": ["s01"],
+  "status": "DRAFT"
+}

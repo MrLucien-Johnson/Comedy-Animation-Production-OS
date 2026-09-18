@@ -1,0 +1,58 @@
+"""Backend registry with honest availability detection."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from capos.core.config import get_config
+from capos.generation.backend import GenerationBackend
+from capos.generation.mock_backend import MockGenerationBackend
+
+_REGISTRY: dict[str, type[GenerationBackend]] = {
+    "mock": MockGenerationBackend,
+}
+
+
+def register_backend(name: str, cls: type[GenerationBackend]) -> None:
+    _REGISTRY[name] = cls
+
+
+def list_backends() -> list[str]:
+    return sorted(_REGISTRY)
+
+
+def get_backend(name: str | None = None) -> GenerationBackend:
+    cfg = get_config()
+    gen = cfg.get("generation", {})
+    if gen.get("use_mock_backend", True):
+        chosen = "mock"
+    else:
+        chosen = name or gen.get("default_backend", "mock")
+    if chosen not in _REGISTRY:
+        # Fall back to mock rather than fabricating another provider's success.
+        return MockGenerationBackend()
+    return _REGISTRY[chosen]()
+
+
+def health_all() -> list[dict[str, Any]]:
+    results = []
+    for _name, cls in sorted(_REGISTRY.items()):
+        backend = cls()
+        results.append(backend.health_check())
+    return results
+
+
+def try_register_optional_backends() -> None:
+    """Register optional backends if dependencies exist — never pretend they work."""
+    try:
+        from capos.generation.huggingface_backend import HuggingFaceBackend
+
+        register_backend("huggingface", HuggingFaceBackend)
+    except Exception:
+        pass
+    try:
+        from capos.generation.null_backend import NullBackend
+
+        register_backend("null", NullBackend)
+    except Exception:
+        pass

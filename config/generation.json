@@ -1,0 +1,9 @@
+{
+  "default_backend": "mock",
+  "use_mock_backend": true,
+  "width": 1024,
+  "height": 1024,
+  "guidance_scale": 7.5,
+  "num_inference_steps": 30,
+  "prefer_reference_edit": true
+}

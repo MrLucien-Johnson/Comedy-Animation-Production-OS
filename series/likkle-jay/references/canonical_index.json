@@ -1,0 +1,142 @@
+{
+  "assets": {
+    "character-likkle-jay-v1": {
+      "asset_id": "character-likkle-jay-v1",
+      "kind": "character",
+      "slug": "likkle-jay",
+      "version": 1,
+      "status": "DRAFT",
+      "path": null,
+      "checksum": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "hair:rounded dome of tight black curls, full and consistent",
+        "wardrobe:yellow tee red collar green shorts"
+      ],
+      "metadata": {},
+      "created_at": "2026-09-18T00:00:00Z",
+      "updated_at": "2026-09-18T00:00:00Z"
+    },
+    "character-auntie-bev-v1": {
+      "asset_id": "character-auntie-bev-v1",
+      "kind": "character",
+      "slug": "auntie-bev",
+      "version": 1,
+      "status": "DRAFT",
+      "path": null,
+      "checksum": null,
+      "superseded_by": null,
+      "locked_traits": [
+        "floral house dress",
+        "headwrap",
+        "round glasses",
+        "gold earrings"
+      ],
+      "metadata": {},
+      "created_at": "2026-09-18T00:00:00Z",
+      "updated_at": "2026-09-18T00:00:00Z"
+    },
+    "outfit-likkle-jay-default-v1": {
+      "asset_id": "outfit-likkle-jay-default-v1",
+      "kind": "outfit",
+      "slug": "likkle-jay-default",
+      "version": 1,
+      "status": "DRAFT",
+      "path": null,
+      "locked_traits": [
+        "yellow T-shirt",
+        "red collar trim",
+        "green shorts"
+      ],
+      "metadata": {},
+      "created_at": "2026-09-18T00:00:00Z",
+      "updated_at": "2026-09-18T00:00:00Z"
+    },
+    "location-kitchen-v1": {
+      "asset_id": "location-kitchen-v1",
+      "kind": "location",
+      "slug": "kitchen",
+      "version": 1,
+      "status": "DRAFT",
+      "path": null,
+      "locked_traits": [
+        "counter left",
+        "fridge right",
+        "straight-on camera"
+      ],
+      "metadata": {},
+      "created_at": "2026-09-18T00:00:00Z",
+      "updated_at": "2026-09-18T00:00:00Z"
+    },
+    "location-living-room-v1": {
+      "asset_id": "location-living-room-v1",
+      "kind": "location",
+      "slug": "living-room",
+      "version": 1,
+      "status": "DRAFT",
+      "path": null,
+      "locked_traits": [],
+      "metadata": {},
+      "created_at": "2026-09-18T00:00:00Z",
+      "updated_at": "2026-09-18T00:00:00Z"
+    },
+    "location-yard-v1": {
+      "asset_id": "location-yard-v1",
+      "kind": "location",
+      "slug": "yard",
+      "version": 1,
+      "status": "DRAFT",
+      "path": null,
+      "locked_traits": [],
+      "metadata": {},
+      "created_at": "2026-09-18T00:00:00Z",
+      "updated_at": "2026-09-18T00:00:00Z"
+    },
+    "location-jay-bedroom-v1": {
+      "asset_id": "location-jay-bedroom-v1",
+      "kind": "location",
+      "slug": "jay-bedroom",
+      "version": 1,
+      "status": "DRAFT",
+      "path": null,
+      "locked_traits": [],
+      "metadata": {},
+      "created_at": "2026-09-18T00:00:00Z",
+      "updated_at": "2026-09-18T00:00:00Z"
+    },
+    "prop-cookie-jar-v1": {
+      "asset_id": "prop-cookie-jar-v1",
+      "kind": "prop",
+      "slug": "cookie-jar",
+      "version": 1,
+      "status": "DRAFT",
+      "path": null,
+      "locked_traits": [
+        "label:COOKIES",
+        "glass jar",
+        "rounded lid",
+        "small cookies"
+      ],
+      "metadata": {
+        "label": "COOKIES"
+      },
+      "created_at": "2026-09-18T00:00:00Z",
+      "updated_at": "2026-09-18T00:00:00Z"
+    },
+    "outfit-auntie-bev-default-v1": {
+      "asset_id": "outfit-auntie-bev-default-v1",
+      "kind": "outfit",
+      "slug": "auntie-bev-default",
+      "version": 1,
+      "status": "DRAFT",
+      "path": null,
+      "locked_traits": [
+        "orange/red floral house dress",
+        "matching headwrap"
+      ],
+      "metadata": {},
+      "created_at": "2026-09-18T00:00:00Z",
+      "updated_at": "2026-09-18T00:00:00Z"
+    }
+  }
+}

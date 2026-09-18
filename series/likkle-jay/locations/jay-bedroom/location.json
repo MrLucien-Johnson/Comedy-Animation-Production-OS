@@ -1,0 +1,10 @@
+{
+  "location_id": "jay-bedroom",
+  "display_name": "Likkle Jay Bedroom",
+  "canonical_asset_id": "location-jay-bedroom-v1",
+  "description": "Likkle Jay's bedroom — cozy kid room with bed, small dresser, toys kept simple for animation.",
+  "camera_baseline": "Straight-on bedroom baseline",
+  "palette": "warm soft walls, colourful but restrained accents",
+  "must_remain_constant": ["bed side", "window placement", "palette"],
+  "prohibited_variations": ["mirrored room", "bed moving sides mid-episode"]
+}

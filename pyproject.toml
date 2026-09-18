@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "comedy-animation-production-os"
+version = "0.1.0"
+description = "Comedy Animation Production OS — series-agnostic comedy sketch production toolkit"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "CAPOS" }]
+dependencies = [
+  "pydantic>=2.6,<3",
+  "Pillow>=10.2,<12",
+  "streamlit>=1.31,<2",
+  "python-dotenv>=1.0,<2",
+  "GitPython>=3.1,<4",
+  "PyYAML>=6.0,<7",
+]
+
+[project.optional-dependencies]
+hf = ["huggingface_hub>=0.21"]
+local = ["diffusers>=0.27", "torch>=2.1"]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.urls]
+Repository = "https://github.com/mrlucien-johnson/comedy-animation-production-os"
+
+[project.scripts]
+capos = "capos.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["capos*"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["UP042", "E501"]

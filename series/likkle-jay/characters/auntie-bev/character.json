@@ -1,0 +1,33 @@
+{
+  "character_id": "auntie-bev",
+  "display_name": "Auntie Bev",
+  "canonical_asset_id": "character-auntie-bev-v1",
+  "description": "Fictional female cartoon character. Rounded/stout silhouette. Medium/dark brown skin. Stern but comedic facial acting.",
+  "wardrobe": "Orange/red floral house dress with matching patterned headwrap",
+  "continuity_locks": {
+    "silhouette": "rounded/stout",
+    "wardrobe": "Orange/red floral house dress; matching patterned headwrap",
+    "accessories": ["round glasses", "gold earrings"],
+    "prop_when_scolding": "wooden spoon",
+    "skin": "medium/dark brown"
+  },
+  "must_remain_constant": [
+    "floral house dress identity",
+    "matching headwrap",
+    "round glasses",
+    "gold earrings",
+    "stout silhouette"
+  ],
+  "prohibited_variations": [
+    "losing glasses between consecutive frames without script reason",
+    "dress pattern redesign mid-episode",
+    "slender redesign"
+  ],
+  "expression_vocabulary": [
+    "suspicious",
+    "stern scold",
+    "eyebrow raise",
+    "hands on hips",
+    "comic disbelief"
+  ]
+}

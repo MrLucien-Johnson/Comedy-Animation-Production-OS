@@ -1,0 +1,45 @@
+{
+  "character_id": "likkle-jay",
+  "display_name": "Likkle Jay",
+  "canonical_asset_id": "character-likkle-jay-v1",
+  "description": "Fictional male cartoon character. Young character design. Medium/dark brown skin. Round youthful face and cheeks.",
+  "hair": "rounded dome of tight black curls, full and consistent",
+  "wardrobe": "Yellow T-shirt with red collar trim and green shorts",
+  "continuity_locks": {
+    "hair": "rounded dome of tight black curls, full and consistent",
+    "hair_details": [
+      "deep black",
+      "dense",
+      "tight curls",
+      "rounded dome silhouette",
+      "short-to-medium",
+      "natural curved edges"
+    ],
+    "wardrobe": "Yellow T-shirt, red collar trim, green shorts",
+    "skin": "medium/dark brown"
+  },
+  "must_remain_constant": [
+    "hair silhouette and texture",
+    "yellow shirt with red collar trim",
+    "green shorts",
+    "youthful round face"
+  ],
+  "prohibited_variations": [
+    "fade haircut",
+    "taper",
+    "different crop",
+    "flattened hair",
+    "slick hair",
+    "hair length change between frames",
+    "wardrobe color swap"
+  ],
+  "expression_vocabulary": [
+    "curious",
+    "tempted",
+    "sneaky grin",
+    "wide-eyed panic",
+    "guilty",
+    "innocent denial",
+    "caught"
+  ]
+}

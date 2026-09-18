@@ -1,0 +1,26 @@
+{
+  "location_id": "kitchen",
+  "display_name": "Kitchen",
+  "canonical_asset_id": "location-kitchen-v1",
+  "description": "Warm family kitchen. Warm beige/orange walls with subtle brick/tile details. Terracotta/brown tiled floor. Wooden cabinets with round handles. Beige/light brown countertop.",
+  "camera_baseline": "Fixed straight-on cartoon camera baseline. Do not randomly mirror the room.",
+  "palette": "warm beige/orange walls; terracotta/brown floor; wooden cabinets; cream fridge",
+  "layout": {
+    "counter": "LEFT",
+    "refrigerator": "RIGHT — cream/off-white"
+  },
+  "must_remain_constant": [
+    "wall geometry",
+    "counter on left",
+    "fridge on right",
+    "cabinet style and round handles",
+    "floor tile colour family",
+    "camera baseline"
+  ],
+  "prohibited_variations": [
+    "mirrored room",
+    "fridge moving to left",
+    "counter moving to right",
+    "palette redesign"
+  ]
+}

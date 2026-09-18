@@ -1,0 +1,18 @@
+{
+  "frame_id": "s01e02_f05",
+  "series_id": "likkle-jay",
+  "episode_id": "s01e02",
+  "positive": "VISUAL STYLE (LOCKED):\nWarm-toned family-friendly fictional 2D cartoon.\nBold dark outlines.\nFlat shading.\nSlight warm/vintage texture.\nExpressive faces.\nDetailed enough to establish location while remaining suitable for simple animation.\nSquare 1:1 master frames unless export reframing metadata says otherwise.\nCharacters and environments are fictional animated designs.\n\nCONTENT SAFETY:\nFictional animated cartoon scene.\nFamily-friendly comedy.\nNo photorealistic people.\nDo not depict real individuals.\n\nCHARACTER LOCK: Likkle Jay\nFictional male cartoon character. Young character design. Medium/dark brown skin. Round youthful face and cheeks.\nHair lock (HARD): rounded dome of tight black curls, full and consistent\nWardrobe: Yellow T-shirt, red collar trim, green shorts\nMust remain constant: hair silhouette and texture, yellow shirt with red collar trim, green shorts, youthful round face\nProhibited: fade haircut, taper, different crop, flattened hair, slick hair, hair length change between frames, wardrobe color swap\n\nLOCATION LOCK: Kitchen\nWarm family kitchen. Warm beige/orange walls with subtle brick/tile details. Terracotta/brown tiled floor. Wooden cabinets with round handles. Beige/light brown countertop.\nCamera baseline: Fixed straight-on cartoon camera baseline. Do not randomly mirror the room.\nPalette: warm beige/orange walls; terracotta/brown floor; wooden cabinets; cream fridge\nMust remain constant: wall geometry, counter on left, fridge on right, cabinet style and round handles, floor tile colour family, camera baseline\nDo not randomly mirror the room.\n\nPROP LOCK: Cookie Jar\nTransparent glass jar with rounded lid. Small golden-brown cookies inside when filled.\nLabel text EXACT: COOKIES\nScale: Cookies must NOT become oversized. Jar must NOT become oversized. Prop scale derives from canonical reference.\nStates allowed: CLOSED, OPEN, LID_BESIDE_JAR, EMPTY, PARTIALLY_FULL\nEpisode state may change; identity must not.\n\nFRAME: s01e02_f05 type=KEYFRAME\n\nACTION: Episode 2 frame 5\n\nEXPRESSION: \n\nCAMERA: straight-on; medium; \n\nCONTINUITY REQUIREMENTS:\nInherit prior frame state unless script changes it. From: s01e02_f04\nLocation asset: location-kitchen-v1\nCharacter assets: character-likkle-jay-v1\nProp assets: prop-cookie-jar-v1\nProp cookie-jar state=OPEN pos=counter; lid beside jar\nHair lock likkle-jay: rounded dome of tight black curls, full and consistent\n\nTEXT POLICY:\nDo not render speech-bubble lettering, titles, captions, or watermarks in the image.\nLeave clean space for programmatic speech bubbles if dialogue is indicated.\nWatermark and dialogue are composited in post with exact spelling.",
+  "negative": "photorealistic, live action, real person, deformed hands, extra limbs, text, letters,\nwatermark, logo, misspelled words, speech bubble text, title text, subtitle text,\ninconsistent haircut, fade haircut, tapered hair, slick hair, flat hair,\noversized cookies, oversized jar, mirrored room, random wardrobe change,\nextra characters, NSFW, gore",
+  "prompt_version": "03a3a1e82f07",
+  "reference_assets": [
+    "character-likkle-jay-v1",
+    "location-kitchen-v1",
+    "prop-cookie-jar-v1"
+  ],
+  "dimensions": {
+    "width": 1024,
+    "height": 1024
+  },
+  "compiled_at": "2026-09-18T11:29:35.170100+00:00"
+}

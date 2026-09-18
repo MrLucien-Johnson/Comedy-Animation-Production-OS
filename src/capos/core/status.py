@@ -1,0 +1,93 @@
+"""Pipeline and asset status enums."""
+
+from __future__ import annotations
+
+from enum import StrEnum
+
+
+class StageStatus(StrEnum):
+    """Explicit status for every production stage and asset."""
+
+    DRAFT = "DRAFT"
+    READY = "READY"
+    GENERATING = "GENERATING"
+    GENERATED = "GENERATED"
+    QA_FAILED = "QA_FAILED"
+    QA_PASSED = "QA_PASSED"
+    REQUIRES_REVIEW = "REQUIRES_REVIEW"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    SUPERSEDED = "SUPERSEDED"
+    EXPORTED = "EXPORTED"
+    LOCKED = "LOCKED"
+    MISSING = "MISSING"
+    PENDING = "PENDING"
+    REFUSED = "REFUSED"  # provider safety refusal recorded
+
+
+class QAResultStatus(StrEnum):
+    """Honest QA outcome — never invent PASS without inspection."""
+
+    NOT_CHECKED = "NOT_CHECKED"
+    CHECKED = "CHECKED"
+    PASS = "PASS"
+    FAIL = "FAIL"
+    REQUIRES_HUMAN_REVIEW = "REQUIRES_HUMAN_REVIEW"
+
+
+class FrameType(StrEnum):
+    MASTER_REFERENCE = "MASTER_REFERENCE"
+    KEYFRAME = "KEYFRAME"
+    TRANSITION = "TRANSITION"
+    DIALOGUE = "DIALOGUE"
+    REACTION = "REACTION"
+    ESTABLISHING = "ESTABLISHING"
+    COVER = "COVER"
+    THUMBNAIL = "THUMBNAIL"
+
+
+class PropState(StrEnum):
+    CLOSED = "CLOSED"
+    OPEN = "OPEN"
+    LID_BESIDE_JAR = "LID_BESIDE_JAR"
+    EMPTY = "EMPTY"
+    PARTIALLY_FULL = "PARTIALLY_FULL"
+    CUSTOM = "CUSTOM"
+
+
+class ComedyBeat(StrEnum):
+    SETUP = "SETUP"
+    TEMPTATION = "TEMPTATION"
+    MISUNDERSTANDING = "MISUNDERSTANDING"
+    ESCALATION = "ESCALATION"
+    DISCOVERY = "DISCOVERY"
+    REACTION = "REACTION"
+    PUNCHLINE = "PUNCHLINE"
+
+
+class ProductionStage(StrEnum):
+    IDEA = "IDEA"
+    EPISODE_BRIEF = "EPISODE_BRIEF"
+    SCRIPT = "SCRIPT"
+    DIALOGUE_REVIEW = "DIALOGUE_REVIEW"
+    STORYBOARD = "STORYBOARD"
+    CONTINUITY_PLAN = "CONTINUITY_PLAN"
+    REFERENCE_RESOLUTION = "REFERENCE_RESOLUTION"
+    KEYFRAME_GENERATION = "KEYFRAME_GENERATION"
+    FRAME_QA = "FRAME_QA"
+    TRANSITION_GENERATION = "TRANSITION_GENERATION"
+    ANIMATION_PLAN = "ANIMATION_PLAN"
+    ANIMATION_ASSEMBLY = "ANIMATION_ASSEMBLY"
+    VOICE = "VOICE"
+    SFX = "SFX"
+    MUSIC = "MUSIC"
+    SUBTITLES = "SUBTITLES"
+    FINAL_CONTINUITY_QA = "FINAL_CONTINUITY_QA"
+    COVER_THUMBNAIL = "COVER_THUMBNAIL"
+    FINAL_MP4 = "FINAL_MP4"
+    HUMAN_APPROVAL = "HUMAN_APPROVAL"
+    PUBLISHABLE_EXPORT = "PUBLISHABLE_EXPORT"
+
+
+# Ordered pipeline for workflows
+PIPELINE_ORDER: tuple[ProductionStage, ...] = tuple(ProductionStage)

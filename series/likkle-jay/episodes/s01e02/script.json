@@ -1,0 +1,27 @@
+{
+  "episode_id": "s01e02",
+  "title": "Di Cookie Jar",
+  "logline": "Jay eyes the cookie jar, opens it, gets caught, denies everything.",
+  "comedy_structure": ["SETUP", "TEMPTATION", "ESCALATION", "DISCOVERY", "REACTION", "PUNCHLINE"],
+  "lines": [
+    {
+      "line_id": "s01e02_l01",
+      "speaker": "likkle-jay",
+      "text": "JUST ONE COOKIE...",
+      "locked": true
+    },
+    {
+      "line_id": "s01e02_l02",
+      "speaker": "auntie-bev",
+      "text": "LIKKLE JAY!",
+      "locked": true
+    },
+    {
+      "line_id": "s01e02_l03",
+      "speaker": "likkle-jay",
+      "text": "MI NEVA DO NUTTN!",
+      "locked": true
+    }
+  ],
+  "status": "READY"
+}

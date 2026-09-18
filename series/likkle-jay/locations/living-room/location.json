@@ -1,0 +1,10 @@
+{
+  "location_id": "living-room",
+  "display_name": "Living Room",
+  "canonical_asset_id": "location-living-room-v1",
+  "description": "Warm family living room with sofa, low table, and soft daylight. Fictional cartoon interior matching series style.",
+  "camera_baseline": "Straight-on medium establishing baseline",
+  "palette": "warm neutrals with soft accent cushions",
+  "must_remain_constant": ["sofa placement", "window side", "overall palette"],
+  "prohibited_variations": ["mirrored room", "furniture redesign mid-episode"]
+}

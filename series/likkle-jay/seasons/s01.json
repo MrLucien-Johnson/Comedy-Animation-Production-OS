@@ -1,0 +1,8 @@
+{
+  "season_id": "s01",
+  "series_id": "likkle-jay",
+  "number": 1,
+  "title": "Season 1",
+  "episodes": ["s01e01", "s01e02", "s01e03"],
+  "status": "DRAFT"
+}

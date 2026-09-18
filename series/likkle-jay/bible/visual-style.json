@@ -1,0 +1,14 @@
+{
+  "medium": "fictional 2D cartoon",
+  "tone": "warm family-friendly",
+  "outlines": "bold dark",
+  "shading": "flat",
+  "texture": "slight warm/vintage",
+  "aspect_ratio_master": "1:1",
+  "watermark": "MRLUCIENJOHNSON",
+  "speech_bubble": {
+    "fill": "cream/off-white",
+    "outline": "bold dark",
+    "lettering": "bold black uppercase"
+  }
+}

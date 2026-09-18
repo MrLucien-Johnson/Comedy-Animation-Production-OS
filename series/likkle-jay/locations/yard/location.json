@@ -1,0 +1,10 @@
+{
+  "location_id": "yard",
+  "display_name": "Yard",
+  "canonical_asset_id": "location-yard-v1",
+  "description": "Outdoor yard / garden space for outdoor mischief and flood gags. Warm daylight cartoon exterior.",
+  "camera_baseline": "Straight-on exterior baseline",
+  "palette": "green grass, warm sky, wooden fence tones",
+  "must_remain_constant": ["fence line", "house exterior side", "palette"],
+  "prohibited_variations": ["night swap without script", "fence redesign mid-episode"]
+}

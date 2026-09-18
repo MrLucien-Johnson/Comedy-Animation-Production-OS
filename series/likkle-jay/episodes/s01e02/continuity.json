@@ -1,0 +1,356 @@
+{
+  "frames": [
+    {
+      "frame_id": "s01e02_f01",
+      "frame_type": "KEYFRAME",
+      "status": "DRAFT",
+      "continuity": {
+        "location_id": "kitchen",
+        "location_asset_id": "location-kitchen-v1",
+        "time_of_day": "day",
+        "lighting": "warm indoor kitchen",
+        "camera": {
+          "angle": "straight-on",
+          "framing": "medium",
+          "lens_notes": "",
+          "baseline_locked": true
+        },
+        "characters": [
+          {
+            "character_id": "likkle-jay",
+            "canonical_asset_id": "character-likkle-jay-v1",
+            "outfit_asset_id": "outfit-likkle-jay-default-v1",
+            "expression": "curious",
+            "hair_lock": "rounded dome of tight black curls, full and consistent",
+            "pose": "standing",
+            "visible": true
+          }
+        ],
+        "props": [
+          {
+            "prop_id": "cookie-jar",
+            "canonical_asset_id": "prop-cookie-jar-v1",
+            "state": "CLOSED",
+            "position": "counter left area",
+            "scale_notes": "cookies and jar must not become oversized; derive from canonical reference",
+            "custom_state": null
+          }
+        ],
+        "dialogue": null,
+        "dialogue_locked": false,
+        "previous_frame_id": "s01e02_f01",
+        "next_frame_id": "s01e02_f02",
+        "notes": []
+      },
+      "continuity_from": null,
+      "continuity_to": "s01e02_f02"
+    },
+    {
+      "frame_id": "s01e02_f02",
+      "frame_type": "DIALOGUE",
+      "status": "DRAFT",
+      "continuity": {
+        "location_id": "kitchen",
+        "location_asset_id": "location-kitchen-v1",
+        "time_of_day": "day",
+        "lighting": "warm indoor kitchen",
+        "camera": {
+          "angle": "straight-on",
+          "framing": "medium",
+          "lens_notes": "",
+          "baseline_locked": true
+        },
+        "characters": [
+          {
+            "character_id": "likkle-jay",
+            "canonical_asset_id": "character-likkle-jay-v1",
+            "outfit_asset_id": "outfit-likkle-jay-default-v1",
+            "expression": "curious",
+            "hair_lock": "rounded dome of tight black curls, full and consistent",
+            "pose": "standing",
+            "visible": true
+          }
+        ],
+        "props": [
+          {
+            "prop_id": "cookie-jar",
+            "canonical_asset_id": "prop-cookie-jar-v1",
+            "state": "CLOSED",
+            "position": "counter left area",
+            "scale_notes": "cookies and jar must not become oversized; derive from canonical reference",
+            "custom_state": null
+          }
+        ],
+        "dialogue": "JUST ONE COOKIE...",
+        "dialogue_locked": true,
+        "previous_frame_id": "s01e02_f02",
+        "next_frame_id": "s01e02_f03",
+        "notes": []
+      },
+      "continuity_from": "s01e02_f01",
+      "continuity_to": "s01e02_f03"
+    },
+    {
+      "frame_id": "s01e02_f03",
+      "frame_type": "KEYFRAME",
+      "status": "DRAFT",
+      "continuity": {
+        "location_id": "kitchen",
+        "location_asset_id": "location-kitchen-v1",
+        "time_of_day": "day",
+        "lighting": "warm indoor kitchen",
+        "camera": {
+          "angle": "straight-on",
+          "framing": "medium",
+          "lens_notes": "",
+          "baseline_locked": true
+        },
+        "characters": [
+          {
+            "character_id": "likkle-jay",
+            "canonical_asset_id": "character-likkle-jay-v1",
+            "outfit_asset_id": "outfit-likkle-jay-default-v1",
+            "expression": "curious",
+            "hair_lock": "rounded dome of tight black curls, full and consistent",
+            "pose": "standing",
+            "visible": true
+          }
+        ],
+        "props": [
+          {
+            "prop_id": "cookie-jar",
+            "canonical_asset_id": "prop-cookie-jar-v1",
+            "state": "OPEN",
+            "position": "counter; lid beside jar",
+            "scale_notes": "cookies and jar must not become oversized; derive from canonical reference",
+            "custom_state": "lid removed; OPEN visual master"
+          }
+        ],
+        "dialogue": null,
+        "dialogue_locked": false,
+        "previous_frame_id": "s01e02_f03",
+        "next_frame_id": "s01e02_f04",
+        "notes": [
+          "Episode 2 Frame 3 is OPEN-state visual master until a reference image replaces it."
+        ]
+      },
+      "continuity_from": "s01e02_f02",
+      "continuity_to": "s01e02_f04"
+    },
+    {
+      "frame_id": "s01e02_f04",
+      "frame_type": "KEYFRAME",
+      "status": "DRAFT",
+      "continuity": {
+        "location_id": "kitchen",
+        "location_asset_id": "location-kitchen-v1",
+        "time_of_day": "day",
+        "lighting": "warm indoor kitchen",
+        "camera": {
+          "angle": "straight-on",
+          "framing": "medium",
+          "lens_notes": "",
+          "baseline_locked": true
+        },
+        "characters": [
+          {
+            "character_id": "likkle-jay",
+            "canonical_asset_id": "character-likkle-jay-v1",
+            "outfit_asset_id": "outfit-likkle-jay-default-v1",
+            "expression": "curious",
+            "hair_lock": "rounded dome of tight black curls, full and consistent",
+            "pose": "standing",
+            "visible": true
+          }
+        ],
+        "props": [
+          {
+            "prop_id": "cookie-jar",
+            "canonical_asset_id": "prop-cookie-jar-v1",
+            "state": "OPEN",
+            "position": "counter; lid beside jar",
+            "scale_notes": "cookies and jar must not become oversized; derive from canonical reference",
+            "custom_state": "lid removed; OPEN visual master"
+          }
+        ],
+        "dialogue": null,
+        "dialogue_locked": false,
+        "previous_frame_id": "s01e02_f04",
+        "next_frame_id": "s01e02_f05",
+        "notes": [
+          "Episode 2 Frame 3 is OPEN-state visual master until a reference image replaces it."
+        ]
+      },
+      "continuity_from": "s01e02_f03",
+      "continuity_to": "s01e02_f05"
+    },
+    {
+      "frame_id": "s01e02_f05",
+      "frame_type": "DIALOGUE",
+      "status": "DRAFT",
+      "continuity": {
+        "location_id": "kitchen",
+        "location_asset_id": "location-kitchen-v1",
+        "time_of_day": "day",
+        "lighting": "warm indoor kitchen",
+        "camera": {
+          "angle": "straight-on",
+          "framing": "medium",
+          "lens_notes": "",
+          "baseline_locked": true
+        },
+        "characters": [
+          {
+            "character_id": "likkle-jay",
+            "canonical_asset_id": "character-likkle-jay-v1",
+            "outfit_asset_id": "outfit-likkle-jay-default-v1",
+            "expression": "curious",
+            "hair_lock": "rounded dome of tight black curls, full and consistent",
+            "pose": "standing",
+            "visible": true
+          },
+          {
+            "character_id": "auntie-bev",
+            "canonical_asset_id": "character-auntie-bev-v1",
+            "outfit_asset_id": "outfit-auntie-bev-default-v1",
+            "expression": "stern",
+            "hair_lock": null,
+            "pose": "doorway",
+            "visible": true
+          }
+        ],
+        "props": [
+          {
+            "prop_id": "cookie-jar",
+            "canonical_asset_id": "prop-cookie-jar-v1",
+            "state": "OPEN",
+            "position": "counter; lid beside jar",
+            "scale_notes": "cookies and jar must not become oversized; derive from canonical reference",
+            "custom_state": "lid removed; OPEN visual master"
+          }
+        ],
+        "dialogue": "LIKKLE JAY!",
+        "dialogue_locked": true,
+        "previous_frame_id": "s01e02_f05",
+        "next_frame_id": "s01e02_f06",
+        "notes": [
+          "Auntie Bev enters — discovery beat"
+        ]
+      },
+      "continuity_from": "s01e02_f04",
+      "continuity_to": "s01e02_f06"
+    },
+    {
+      "frame_id": "s01e02_f06",
+      "frame_type": "KEYFRAME",
+      "status": "DRAFT",
+      "continuity": {
+        "location_id": "kitchen",
+        "location_asset_id": "location-kitchen-v1",
+        "time_of_day": "day",
+        "lighting": "warm indoor kitchen",
+        "camera": {
+          "angle": "straight-on",
+          "framing": "medium",
+          "lens_notes": "",
+          "baseline_locked": true
+        },
+        "characters": [
+          {
+            "character_id": "likkle-jay",
+            "canonical_asset_id": "character-likkle-jay-v1",
+            "outfit_asset_id": "outfit-likkle-jay-default-v1",
+            "expression": "curious",
+            "hair_lock": "rounded dome of tight black curls, full and consistent",
+            "pose": "standing",
+            "visible": true
+          },
+          {
+            "character_id": "auntie-bev",
+            "canonical_asset_id": "character-auntie-bev-v1",
+            "outfit_asset_id": "outfit-auntie-bev-default-v1",
+            "expression": "stern",
+            "hair_lock": null,
+            "pose": "doorway",
+            "visible": true
+          }
+        ],
+        "props": [
+          {
+            "prop_id": "cookie-jar",
+            "canonical_asset_id": "prop-cookie-jar-v1",
+            "state": "OPEN",
+            "position": "counter; lid beside jar",
+            "scale_notes": "cookies and jar must not become oversized; derive from canonical reference",
+            "custom_state": "lid removed; OPEN visual master"
+          }
+        ],
+        "dialogue": null,
+        "dialogue_locked": false,
+        "previous_frame_id": "s01e02_f06",
+        "next_frame_id": "s01e02_f07",
+        "notes": [
+          "Auntie Bev enters — discovery beat"
+        ]
+      },
+      "continuity_from": "s01e02_f05",
+      "continuity_to": "s01e02_f07"
+    },
+    {
+      "frame_id": "s01e02_f07",
+      "frame_type": "DIALOGUE",
+      "status": "DRAFT",
+      "continuity": {
+        "location_id": "kitchen",
+        "location_asset_id": "location-kitchen-v1",
+        "time_of_day": "day",
+        "lighting": "warm indoor kitchen",
+        "camera": {
+          "angle": "straight-on",
+          "framing": "medium",
+          "lens_notes": "",
+          "baseline_locked": true
+        },
+        "characters": [
+          {
+            "character_id": "likkle-jay",
+            "canonical_asset_id": "character-likkle-jay-v1",
+            "outfit_asset_id": "outfit-likkle-jay-default-v1",
+            "expression": "curious",
+            "hair_lock": "rounded dome of tight black curls, full and consistent",
+            "pose": "standing",
+            "visible": true
+          },
+          {
+            "character_id": "auntie-bev",
+            "canonical_asset_id": "character-auntie-bev-v1",
+            "outfit_asset_id": "outfit-auntie-bev-default-v1",
+            "expression": "stern",
+            "hair_lock": null,
+            "pose": "doorway",
+            "visible": true
+          }
+        ],
+        "props": [
+          {
+            "prop_id": "cookie-jar",
+            "canonical_asset_id": "prop-cookie-jar-v1",
+            "state": "OPEN",
+            "position": "counter; lid beside jar",
+            "scale_notes": "cookies and jar must not become oversized; derive from canonical reference",
+            "custom_state": "lid removed; OPEN visual master"
+          }
+        ],
+        "dialogue": "MI NEVA DO NUTTN!",
+        "dialogue_locked": true,
+        "previous_frame_id": "s01e02_f07",
+        "next_frame_id": null,
+        "notes": [
+          "Auntie Bev enters — discovery beat"
+        ]
+      },
+      "continuity_from": "s01e02_f06",
+      "continuity_to": null
+    }
+  ]
+}
