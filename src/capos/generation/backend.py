@@ -41,7 +41,19 @@ class GenerationBackend(ABC):
             "supports_edit": self.supports_edit(),
             "supports_inpaint": self.supports_inpaint(),
             "supports_outpaint": self.supports_outpaint(),
+            "supports_control_image": self.supports_control_image(),
+            "capabilities": {
+                "TEXT_TO_IMAGE": True,
+                "IMAGE_TO_IMAGE": self.supports_edit(),
+                "REFERENCE_IMAGE": self.supports_reference_images(),
+                "INPAINT": self.supports_inpaint(),
+                "OUTPAINT": self.supports_outpaint(),
+                "CONTROL_IMAGE": self.supports_control_image(),
+                "SEED": self.supports_seed(),
+                "NEGATIVE_PROMPT": self.supports_negative_prompt(),
+            },
             "model": self.model_information(),
+            "production_eligible": ok and self.name not in {"mock", "null"},
         }
 
     @abstractmethod
@@ -155,6 +167,9 @@ class GenerationBackend(ABC):
         return False
 
     def supports_outpaint(self) -> bool:
+        return False
+
+    def supports_control_image(self) -> bool:
         return False
 
     def model_information(self) -> dict[str, Any]:

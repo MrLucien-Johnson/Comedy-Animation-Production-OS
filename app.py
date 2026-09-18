@@ -9,6 +9,9 @@ import streamlit as st
 
 from capos import __version__
 from capos.canon.bootstrap import bootstrap_likkle_jay_canon
+from capos.canon.candidates import CandidateStore
+from capos.canon.diff import compare_to_canon
+from capos.canon.pipeline import CanonCreationPipeline
 from capos.core.paths import project_root, series_dir
 from capos.core.schemas import WATERMARK_EXACT
 from capos.core.status import CanonStatus, StageStatus
@@ -20,6 +23,7 @@ from capos.domain.series import (
     load_storyboard,
 )
 from capos.export.ffmpeg_export import ffmpeg_available
+from capos.generation.capabilities import capability_matrix, select_production_provider
 from capos.generation.provider_status import provider_dashboard_status
 from capos.generation.registry import try_register_optional_backends
 from capos.pipeline.readiness import evaluate_season_production_ready
@@ -39,6 +43,8 @@ nav = st.sidebar.radio(
         "Dashboard",
         "Series",
         "Canon",
+        "Canon Candidates",
+        "Compare to Canon",
         "Characters",
         "Locations",
         "Props",
@@ -76,9 +82,12 @@ if nav == "Dashboard":
     cols[4].metric("Season gate", "PASS" if report.season_production_ready else "FAIL")
     st.write("Provider availability:")
     st.json(provider_dashboard_status())
+    st.write("Production provider selection:")
+    st.json(select_production_provider())
     st.info(
         "Do not mass-generate episodes until SEASON_PRODUCTION_READY passes. "
-        "Canon → Approval → Golden references → Production."
+        "Canon → Approval → Golden references → Production. "
+        "Mock art is never production canon."
     )
 
 elif nav == "Series":
@@ -150,6 +159,71 @@ elif nav == "Canon":
                 store.attach_file(a.asset_id, dest, source="user_upload")
                 st.success(f"Attached {dest.name} as CANDIDATE")
                 st.rerun()
+
+elif nav == "Canon Candidates":
+    st.subheader("Canon candidate batches (human selection required)")
+    pipe = CanonCreationPipeline(series_id, root=root)
+    st.json(pipe.next_actionable_step())
+    c1, c2, c3 = st.columns(3)
+    if c1.button("Generate STYLE candidates (×3)"):
+        batch = pipe.generate_style_candidates(count=3)
+        st.write(batch.model_dump())
+        st.rerun()
+    if c2.button("Generate LIKKLE JAY candidates (×3)"):
+        st.write(pipe.generate_likkle_jay_candidates(count=3).model_dump())
+        st.rerun()
+    if c3.button("Generate AUNTIE BEV candidates (×3)"):
+        st.write(pipe.generate_auntie_bev_candidates(count=3).model_dump())
+        st.rerun()
+    loc_cols = st.columns(4)
+    for i, loc in enumerate(["kitchen", "living-room", "yard", "bedroom"]):
+        if loc_cols[i].button(f"Gen {loc}"):
+            st.write(pipe.generate_location_candidates(loc, count=3).model_dump())
+            st.rerun()
+    if st.button("Generate COOKIE JAR candidates (×3)"):
+        st.write(pipe.generate_cookie_jar_candidates(count=3).model_dump())
+        st.rerun()
+
+    store_b = CandidateStore(series_id, root=root)
+    for batch in store_b.list_batches():
+        with st.expander(
+            f"{batch.batch_id} · {_status_badge(batch.status)} → {batch.target_asset_id}"
+        ):
+            if batch.blocker:
+                st.error(batch.blocker)
+            st.write(batch.recommendation_notes)
+            for cand in batch.candidates:
+                cols = st.columns([1, 2, 1])
+                if cand.file and Path(cand.file).is_file():
+                    cols[0].image(cand.file, use_container_width=True)
+                else:
+                    cols[0].warning("No file")
+                cols[1].json(cand.model_dump())
+                if cand.non_production:
+                    cols[2].warning("NON-PRODUCTION — cannot lock as canon")
+                elif cols[2].button("Select", key=f"sel_{batch.batch_id}_{cand.candidate_id}"):
+                    try:
+                        pipe.promote_selection_to_canon(batch.batch_id, cand.candidate_id)
+                        st.success(
+                            f"Selected {cand.candidate_id}. Now APPROVE on Canon page to lock."
+                        )
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(str(exc))
+
+elif nav == "Compare to Canon":
+    st.subheader("COMPARE TO CANON")
+    parent_id = st.text_input("Parent / approved asset id", "style-likkle-jay-v1")
+    cand_path = st.text_input("Candidate image path (optional)")
+    if st.button("Compare"):
+        st.json(
+            compare_to_canon(
+                series_id=series_id,
+                candidate_file=cand_path or None,
+                parent_asset_id=parent_id or None,
+                root=root,
+            )
+        )
 
 elif nav == "Characters":
     st.subheader("Characters")
@@ -252,9 +326,14 @@ elif nav == "QA":
     st.code("Cookie jar label must be exactly: COOKIES")
 
 elif nav == "Providers":
-    st.subheader("Image providers")
-    st.json(provider_dashboard_status())
-    st.caption("Prefer reference-based edit over full regeneration when supported.")
+    st.subheader("Image providers + capability matrix")
+    st.json(capability_matrix())
+    st.write("Selected production provider:")
+    st.json(select_production_provider())
+    st.caption(
+        "Prefer reference-based edit over full regeneration when supported. "
+        "Mock is never production-eligible."
+    )
 
 elif nav == "Readiness Gate":
     st.subheader("SEASON_PRODUCTION_READY")

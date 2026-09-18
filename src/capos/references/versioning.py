@@ -101,6 +101,8 @@ class ReferenceStore:
                 CanonStatus.CANDIDATE.value,
                 CanonStatus.REVIEW_REQUIRED.value,
                 CanonStatus.REJECTED.value,
+                CanonStatus.AWAITING_HUMAN_SELECTION.value,
+                CanonStatus.BLOCKED_NO_PROVIDER.value,
             }
             if prev_status not in updatable or not allow_replace_draft:
                 raise ValidationError(

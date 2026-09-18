@@ -63,6 +63,12 @@ def try_register_optional_backends() -> None:
         register_backend("local", LocalDiffusionBackend)
     except Exception:
         pass
+    try:
+        from capos.generation.comfyui_backend import ComfyUIBackend
+
+        register_backend("comfyui", ComfyUIBackend)
+    except Exception:
+        pass
 
 
 def record_provider_refusal(

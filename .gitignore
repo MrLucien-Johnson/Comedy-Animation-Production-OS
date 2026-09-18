@@ -19,6 +19,11 @@ assets/rejected/**
 !assets/rejected/.gitkeep
 assets/exports/**
 !assets/exports/.gitkeep
+production/**/*.png
+production/**/*.jpg
+production/**/*.jpeg
+production/**/*.webp
+!production/**/.gitkeep
 *.mp4
 *.wav
 *.mp3
@@ -26,3 +31,4 @@ models/
 .hf_cache/
 colab/outbound/
 colab/inbound/
+logs/provider_refusals/

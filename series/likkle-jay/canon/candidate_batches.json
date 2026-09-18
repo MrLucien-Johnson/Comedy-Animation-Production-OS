@@ -1,0 +1,21 @@
+{
+  "batches": {
+    "style-master-batch-001": {
+      "batch_id": "style-master-batch-001",
+      "series_id": "likkle-jay",
+      "step": "STYLE_MASTER",
+      "target_asset_id": "style-likkle-jay-v1",
+      "parent_asset_ids": [],
+      "status": "BLOCKED_NO_PROVIDER",
+      "candidates": [],
+      "selected_candidate_id": null,
+      "recommendation_notes": [
+        "Configure HF_TOKEN, local Diffusers, or ComfyUI.",
+        "Mock art will not be accepted as production canon."
+      ],
+      "blocker": "Set HF_TOKEN for Hugging Face, install/configure local Diffusers weights, or point CAPOS_COMFYUI_URL at a ComfyUI server. Mock art must not be used as canon.",
+      "created_at": "2026-09-18T15:18:46.623630+00:00",
+      "updated_at": "2026-09-18T15:18:46.623649+00:00"
+    }
+  }
+}

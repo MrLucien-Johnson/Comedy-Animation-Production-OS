@@ -28,6 +28,12 @@ def classify_backend(name: str, health: dict[str, Any]) -> ProviderAvailability:
         if not available:
             return ProviderAvailability.UNAVAILABLE
         return ProviderAvailability.AVAILABLE
+    if name == "comfyui":
+        if "not set" in reason:
+            return ProviderAvailability.NOT_CONFIGURED
+        if not available:
+            return ProviderAvailability.UNAVAILABLE
+        return ProviderAvailability.AVAILABLE
     if not available:
         if "config" in reason or "token" in reason or "not set" in reason:
             return ProviderAvailability.NOT_CONFIGURED

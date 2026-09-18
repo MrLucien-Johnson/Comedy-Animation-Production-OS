@@ -4,45 +4,48 @@
 
 | Gate | Meaning | Current |
 |------|---------|---------|
-| **ENGINEERING COMPLETE** | Code, schemas, workflows, tests | **YES** (Phase 1 activation) |
-| **CONTENT PRODUCTION READY** | Approved canonical **images** exist | **NO** |
+| **ENGINEERING COMPLETE** | Code, schemas, workflows, tests | **YES** (Phase 2) |
+| **CONTENT PRODUCTION READY** | Approved canonical **images** exist | **NO** (workflows ready; 0 approved images) |
 | **SEASON PRODUCTION READY** | Minimum canon APPROVED + real provider + golden refs | **NO** (fail-closed) |
 
 ## Engineering readiness
 
 | Area | Status |
 |------|--------|
-| Domain schemas / hierarchy | Ready |
-| Canonical asset types + CanonStatus lifecycle | Ready |
-| Turnaround / expression / prop-state registry | Ready (metadata; REFERENCE_REQUIRED) |
-| Scale system (Jay height = 1.0) | Ready |
-| Spatial regions (e.g. LEFT_COUNTER) | Ready |
-| Golden frame + REFERENCE_REQUIRED workflow | Ready |
-| Provider availability dashboard states | Ready |
-| Deterministic text masters | Ready |
-| Visual QA (aHash → REVIEW_REQUIRED only) | Ready |
-| SEASON_PRODUCTION_READY gate | Ready (correctly FAILs) |
-| Production UI Canon / Golden / Readiness | Ready |
-| Tests | 34 passed |
+| Phase 0–1 foundation | Ready |
+| Production storage hierarchy | Ready |
+| Provider capability matrix | Ready |
+| Canon creation pipeline (dependency order) | Ready |
+| Candidate batches + human selection | Ready |
+| COMPARE TO CANON | Ready |
+| COOKIES / watermark compositors | Ready |
+| ComfyUI / HF / local provider stubs | Ready (config-gated) |
+| Tests | Phase 2 suite included |
 
 ## Content-production readiness
 
 | Area | Status |
 |------|--------|
-| Approved canonical reference **images** | **Not ready** — no production image files |
-| Likkle Jay / Auntie Bev turnarounds on disk | **Not ready** |
-| Location masters on disk | **Not ready** |
-| Cookie jar state masters on disk | **Not ready** |
-| S01E02 F3 open-jar golden image | **REFERENCE_REQUIRED** — awaiting user upload |
-| Human-approved episode frames | **Not ready** |
-| Real provider generations | **Not claimed** — mock AVAILABLE; HF NOT_CONFIGURED without token |
+| Approved style master image | **Not ready** |
+| Approved character masters | **Not ready** |
+| Turnarounds / expressions on disk | **Not ready** |
+| Location / prop masters on disk | **Not ready** |
+| S01E02 F3 golden | **REFERENCE_REQUIRED** |
+| Real provider | **NOT_CONFIGURED** (mock only — not production-eligible) |
 
-## Remaining blockers for SEASON_PRODUCTION_READY
+## Exact blocker for visual generation
 
-1. Generate or import approved images for all required masters/turnarounds  
-2. Approve + lock those assets (APPROVE requires a real file)  
-3. Upload S01E02 Frame 3 open-cookie-jar golden reference  
-4. Configure a real image provider (e.g. `HF_TOKEN`) — mock alone is insufficient  
-5. Only then recommend automated season production  
+No production-eligible image provider is configured:
 
-Mock demo frames remain **non-production**.
+- `HF_TOKEN` unset → Hugging Face `NOT_CONFIGURED`
+- Local Diffusers not installed/configured
+- `CAPOS_COMFYUI_URL` unset
+
+**Mock art is intentionally refused as production canon.**
+
+## Next human actions
+
+1. Set a real provider credential/config in `.env` (never commit secrets)
+2. `python scripts/phase2_generate_style_candidates.py`
+3. Select + APPROVE + LOCK style in Streamlit
+4. Continue the dependency chain
