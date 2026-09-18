@@ -198,19 +198,38 @@ elif nav == "Canon Candidates":
                     cols[0].image(cand.file, use_container_width=True)
                 else:
                     cols[0].warning("No file")
-                cols[1].json(cand.model_dump())
-                if cand.non_production:
-                    cols[2].warning("NON-PRODUCTION — cannot lock as canon")
-                elif cols[2].button("Select", key=f"sel_{batch.batch_id}_{cand.candidate_id}"):
-                    try:
-                        pipe.promote_selection_to_canon(batch.batch_id, cand.candidate_id)
-                        st.success(
-                            f"Selected {cand.candidate_id}. Now APPROVE on Canon page to lock."
-                        )
+                cols[1].markdown(
+                    f"**{cand.candidate_id}**  \n"
+                    f"model: `{cand.model}` · seed: `{cand.seed}`  \n"
+                    f"resolution: `{cand.generation_resolution}` · "
+                    f"duration: `{cand.duration_ms} ms`  \n"
+                    f"workflow: `{cand.workflow}` · backend: `{cand.backend}`"
+                )
+                cols[1].json(cand.qa_summary)
+                if cand.smoke_test or cand.non_production:
+                    cols[2].warning("NON-PRODUCTION / SMOKE — cannot lock as canon")
+                else:
+                    a1, a2, a3 = cols[2].columns(3)
+                    if a1.button("SELECT", key=f"sel_{batch.batch_id}_{cand.candidate_id}"):
+                        try:
+                            pipe.promote_selection_to_canon(batch.batch_id, cand.candidate_id)
+                            st.success(
+                                f"Selected {cand.candidate_id}. Now APPROVE on Canon page to lock."
+                            )
+                            st.rerun()
+                        except Exception as exc:
+                            st.error(str(exc))
+                    if a2.button("REJECT", key=f"rej_{batch.batch_id}_{cand.candidate_id}"):
+                        cand.status = CanonStatus.REJECTED
+                        store_b.upsert(batch)
                         st.rerun()
-                    except Exception as exc:
-                        st.error(str(exc))
-
+                    if a3.button(
+                        "REGENERATE", key=f"regen_{batch.batch_id}_{cand.candidate_id}"
+                    ):
+                        st.info(
+                            "Regenerate runs a new style batch (×3 sequential). "
+                            "Use Generate STYLE candidates above."
+                        )
 elif nav == "Compare to Canon":
     st.subheader("COMPARE TO CANON")
     parent_id = st.text_input("Parent / approved asset id", "style-likkle-jay-v1")
@@ -327,12 +346,65 @@ elif nav == "QA":
 
 elif nav == "Providers":
     st.subheader("Image providers + capability matrix")
+    from capos.generation.provider_status import comfyui_dashboard_panel
+    from capos.generation.smoke import run_provider_smoke_test
+    from capos.hardware.profile import (
+        detect_gpu,
+        load_hardware_profile,
+        resolve_generation_settings,
+    )
+
+    panel = comfyui_dashboard_panel()
+    st.markdown("### COMFYUI LOCAL")
+    g1, g2, g3, g4 = st.columns(4)
+    g1.metric("Status", panel.get("status"))
+    g2.metric("VRAM class", panel.get("vram_class"))
+    g3.metric("Profile", panel.get("generation_profile"))
+    g4.metric("Resolution", panel.get("resolution"))
+    st.json(
+        {
+            "gpu": panel.get("gpu"),
+            "model": panel.get("model"),
+            "model_licence": panel.get("model_licence"),
+            "workflow": panel.get("workflow"),
+            "workflow_configured": panel.get("workflow_configured"),
+            "workflow_reason": panel.get("workflow_reason"),
+            "capabilities": panel.get("capabilities"),
+            "concurrency": panel.get("concurrency"),
+            "local_provider": panel.get("local_provider"),
+            "production_eligible": panel.get("production_eligible"),
+            "reason": panel.get("reason"),
+        }
+    )
+    b1, b2 = st.columns(2)
+    if b1.button("TEST CONNECTION"):
+        from capos.generation.comfyui_backend import ComfyUIBackend
+
+        st.write(ComfyUIBackend().available())
+        st.json(comfyui_dashboard_panel())
+    if b2.button("RUN SMOKE TEST"):
+        with st.spinner("Running PROVIDER_SMOKE_TEST (non-canon)…"):
+            st.json(run_provider_smoke_test(root=root))
+    st.caption(
+        "Smoke test is PROVIDER_SMOKE_TEST only — never auto-approved as style canon. "
+        "Secrets are not displayed."
+    )
+    st.divider()
+    st.write("Full capability matrix:")
     st.json(capability_matrix())
     st.write("Selected production provider:")
     st.json(select_production_provider())
+    st.write("Hardware profile:")
+    st.json(
+        {
+            "detected_gpu": detect_gpu(),
+            "profile": load_hardware_profile().model_dump(mode="json"),
+            "settings": resolve_generation_settings(),
+        }
+    )
     st.caption(
         "Prefer reference-based edit over full regeneration when supported. "
-        "Mock is never production-eligible."
+        "Mock is never production-eligible. LOW_VRAM_6GB concurrency=1."
     )
 
 elif nav == "Readiness Gate":

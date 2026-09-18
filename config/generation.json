@@ -1,9 +1,11 @@
 {
-  "default_backend": "mock",
-  "use_mock_backend": true,
-  "width": 1024,
-  "height": 1024,
-  "guidance_scale": 7.5,
-  "num_inference_steps": 30,
-  "prefer_reference_edit": true
+  "default_backend": "comfyui",
+  "use_mock_backend": false,
+  "width": 512,
+  "height": 512,
+  "guidance_scale": 7.0,
+  "num_inference_steps": 20,
+  "prefer_reference_edit": true,
+  "preferred_production_provider": "comfyui",
+  "diffusion_resolution_note": "Diffusion size is independent of export/upscale resolution. LOW_VRAM_6GB defaults to 512."
 }

@@ -113,6 +113,22 @@ No paid provider assumed. Mock backend always available for tests.
 
 ---
 
+## Phases (execution order)
+
+0. Audit + architecture docs + package skeleton  
+1. Core schemas / domain model  
+2. Series Bible + references + continuity + prompts  
+3. Providers + QA + export + Streamlit  
+4. Phase 1 — canonical production activation  
+5. Phase 2 — canon creation & approval pipeline  
+6. **Phase 2A — local ComfyUI / LOW_VRAM_6GB activation** (this track)  
+7. Human style selection → character/location/prop masters (gated)  
+8. Season production only after SEASON_PRODUCTION_READY  
+
+See `docs/PHASE2A_COMFYUI_LOW_VRAM.md`, `docs/COMFYUI_LOCAL_SETUP.md`, `docs/MODEL_SELECTION.md`.
+
+---
+
 ## Risks
 
 | Risk | Mitigation |

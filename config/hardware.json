@@ -1,0 +1,17 @@
+{
+  "profile_id": "LOW_VRAM_6GB",
+  "vram_class": "LOW_6GB",
+  "vram_gb": 6.0,
+  "gpu_name_hint": "NVIDIA GeForce RTX 3050",
+  "generation_concurrency": 1,
+  "default_width": 512,
+  "default_height": 512,
+  "max_width": 640,
+  "max_height": 640,
+  "generation_profile": "SAFE",
+  "allow_parallel_jobs": false,
+  "oom_max_retries": 2,
+  "oom_fallback_widths": [512, 448, 384],
+  "prefer_reference_edit": true,
+  "notes": "RTX 3050 6GB-aware defaults. Diffusion resolution separate from export. Concurrency=1."
+}

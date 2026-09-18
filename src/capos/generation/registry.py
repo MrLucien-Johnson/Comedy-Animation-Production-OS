@@ -23,15 +23,23 @@ def list_backends() -> list[str]:
 
 
 def get_backend(name: str | None = None) -> GenerationBackend:
+    try_register_optional_backends()
     cfg = get_config()
     gen = cfg.get("generation", {})
     if gen.get("use_mock_backend", True):
         chosen = "mock"
     else:
-        chosen = name or gen.get("default_backend", "mock")
+        chosen = name or gen.get("preferred_production_provider") or gen.get(
+            "default_backend", "comfyui"
+        )
     if chosen not in _REGISTRY:
-        # Fall back to mock rather than fabricating another provider's success.
-        return MockGenerationBackend()
+        if chosen == "mock":
+            return MockGenerationBackend()
+        # Do not silently substitute mock for a real provider request.
+        raise RuntimeError(
+            f"Backend '{chosen}' is not registered. "
+            "Configure ComfyUI / local / HF, or set CAPOS_MOCK_GENERATION=1 for mock-only demos."
+        )
     return _REGISTRY[chosen]()
 
 

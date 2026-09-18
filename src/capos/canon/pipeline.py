@@ -19,10 +19,13 @@ from capos.canon.prompts import (
 )
 from capos.core.errors import ValidationError
 from capos.core.paths import project_root
-from capos.core.schemas import CanonicalAssetRef
+from capos.core.schemas import CanonicalAssetRef, utcnow
 from capos.core.status import CanonStatus, CanonStep
 from capos.generation.capabilities import capability_matrix, select_production_provider
+from capos.generation.concurrency import generation_slot
+from capos.generation.image_validate import validate_candidate_image
 from capos.generation.registry import _REGISTRY, record_provider_refusal
+from capos.hardware.profile import load_hardware_profile, resolve_generation_settings
 from capos.production.storage import ensure_production_tree, register_production_file
 from capos.references.versioning import ReferenceStore
 
@@ -126,8 +129,9 @@ class CanonCreationPipeline:
                     status=CanonStatus.BLOCKED_NO_PROVIDER,
                     blocker=provider_or_reason,
                     recommendation_notes=[
-                        "Configure HF_TOKEN, local Diffusers, or ComfyUI.",
+                        "Configure CAPOS_COMFYUI_URL (preferred), local Diffusers, or HF_TOKEN.",
                         "Mock art will not be accepted as production canon.",
+                        "See docs/COMFYUI_LOCAL_SETUP.md for RTX 3050 6GB setup.",
                     ],
                 )
                 return self.batches.upsert(batch)
@@ -157,9 +161,19 @@ class CanonCreationPipeline:
             if pref and pref.effective_path:
                 refs.append(pref.effective_path)
 
+        hw = resolve_generation_settings(load_hardware_profile(root=self.root))
+        width = int(hw["width"])
+        height = int(hw["height"])
+        workflow = None
+        if provider_name == "comfyui":
+            import os
+
+            workflow = os.environ.get("CAPOS_COMFYUI_WORKFLOW", "style-master-low-vram.json")
+
         candidates: list[CandidateAsset] = []
         notes: list[str] = []
         base_root = Path(self.root) if self.root else project_root()
+        # Sequential only — never parallel diffusion on LOW_6GB
         for i in range(1, count + 1):
             cid = f"{batch_id}-c{i:03d}"
             out = (
@@ -172,16 +186,25 @@ class CanonCreationPipeline:
                 / f"{cid}.png"
             )
             out.parent.mkdir(parents=True, exist_ok=True)
-            result = backend.generate_image(
-                prompt=prompt,
-                negative_prompt=negative,
-                width=1024,
-                height=1024,
-                seed=1000 + i,
-                reference_images=refs or None,
-                output_path=out,
-                settings={"capos_canon_step": step.value, "non_production": non_prod},
-            )
+            with generation_slot(root=self.root):
+                result = backend.generate_image(
+                    prompt=prompt,
+                    negative_prompt=negative,
+                    width=width,
+                    height=height,
+                    seed=1000 + i,
+                    reference_images=refs or None,
+                    output_path=out,
+                    settings={
+                        "capos_canon_step": step.value,
+                        "non_production": non_prod,
+                        "candidate_id": cid,
+                        "batch_id": batch_id,
+                        "workflow": workflow,
+                        "steps": hw.get("steps_hint"),
+                        "cfg": hw.get("cfg_hint"),
+                    },
+                )
             if result.refusal:
                 record_provider_refusal(
                     backend=provider_name, prompt=prompt, refusal=result.refusal
@@ -195,6 +218,10 @@ class CanonCreationPipeline:
             ):
                 notes.append(f"{cid}: generation failed — {result.error}")
                 continue
+            validation = validate_candidate_image(Path(result.output_path), require_square=True)
+            if not validation["ok"]:
+                notes.append(f"{cid}: image validation failed — {validation.get('error')}")
+                continue
             meta = register_production_file(
                 series_id=self.series_id,
                 category=category,
@@ -203,13 +230,17 @@ class CanonCreationPipeline:
                 root=self.root,
                 kind="candidate",
             )
+            gen_res = result.metadata.get("generation_resolution") or (
+                f"{validation['width']}x{validation['height']}"
+            )
             qa = {
                 "FILE_CHECK": "PASS",
-                "DIMENSION_CHECK": "PASS"
-                if Path(result.output_path).stat().st_size > 0
-                else "FAIL",
+                "DIMENSION_CHECK": "PASS",
+                "SQUARE_CHECK": "PASS" if validation["square"] else "FAIL",
+                "CHECKSUM": validation["checksum"],
                 "VISUAL_IDENTITY": "REQUIRES_HUMAN_REVIEW",
                 "non_production": non_prod,
+                "images_claimed": True,
             }
             candidates.append(
                 CandidateAsset(
@@ -219,6 +250,14 @@ class CanonCreationPipeline:
                     backend=provider_name,
                     model=result.model,
                     seed=result.seed,
+                    prompt_version="style-master-v1"
+                    if step == CanonStep.STYLE_MASTER
+                    else step.value,
+                    workflow=result.metadata.get("workflow") or workflow,
+                    generation_resolution=gen_res,
+                    duration_ms=result.metadata.get("duration_ms"),
+                    generated_at=utcnow().isoformat(),
+                    smoke_test=False,
                     qa_summary=qa,
                     status=CanonStatus.CANDIDATE,
                     non_production=non_prod,

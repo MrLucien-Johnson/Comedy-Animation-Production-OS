@@ -1,0 +1,123 @@
+{
+  "template_only": true,
+  "requires_local_checkpoint": true,
+  "vram_class": "LOW_6GB",
+  "intended_resolution": [
+    512,
+    512
+  ],
+  "description": "CAPOS low-VRAM template for expression-low-vram. Replace checkpoint; verify nodes exist in your ComfyUI install before clearing template_only.",
+  "reference_notes": "For img2img/reference workflows, extend with LoadImage + conditioning nodes only if VRAM budget allows.",
+  "prompt": {
+    "1": {
+      "class_type": "CheckpointLoaderSimple",
+      "inputs": {
+        "ckpt_name": "REPLACE_WITH_LOCAL_CHECKPOINT.safetensors"
+      },
+      "_meta": {
+        "capos_role": "checkpoint",
+        "title": "Load Checkpoint"
+      }
+    },
+    "2": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "POSITIVE",
+        "clip": [
+          "1",
+          1
+        ]
+      },
+      "_meta": {
+        "capos_role": "positive",
+        "title": "Positive"
+      }
+    },
+    "3": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "NEGATIVE",
+        "clip": [
+          "1",
+          1
+        ]
+      },
+      "_meta": {
+        "capos_role": "negative",
+        "title": "Negative"
+      }
+    },
+    "4": {
+      "class_type": "EmptyLatentImage",
+      "inputs": {
+        "width": 512,
+        "height": 512,
+        "batch_size": 1
+      },
+      "_meta": {
+        "capos_role": "size",
+        "title": "Latent"
+      }
+    },
+    "5": {
+      "class_type": "KSampler",
+      "inputs": {
+        "seed": 0,
+        "steps": 20,
+        "cfg": 7.0,
+        "sampler_name": "euler",
+        "scheduler": "normal",
+        "denoise": 1.0,
+        "model": [
+          "1",
+          0
+        ],
+        "positive": [
+          "2",
+          0
+        ],
+        "negative": [
+          "3",
+          0
+        ],
+        "latent_image": [
+          "4",
+          0
+        ]
+      },
+      "_meta": {
+        "capos_role": "sampler",
+        "title": "Sampler"
+      }
+    },
+    "6": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "5",
+          0
+        ],
+        "vae": [
+          "1",
+          2
+        ]
+      },
+      "_meta": {
+        "title": "VAE Decode"
+      }
+    },
+    "7": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "filename_prefix": "capos_expression-low-vram",
+        "images": [
+          "6",
+          0
+        ]
+      },
+      "_meta": {
+        "title": "Save"
+      }
+    }
+  }
+}

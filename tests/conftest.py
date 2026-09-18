@@ -16,7 +16,7 @@ def tmp_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     root = tmp_path / "capos_proj"
     # Copy minimal tree from real project
     src = Path(__file__).resolve().parents[1]
-    for name in ("config", "series"):
+    for name in ("config", "series", "workflows"):
         shutil.copytree(src / name, root / name)
     for d in (
         "assets/generations",

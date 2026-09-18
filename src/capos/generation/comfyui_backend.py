@@ -1,14 +1,23 @@
-"""ComfyUI backend — optional remote API; never pretend availability."""
+"""ComfyUI generation backend — low-VRAM aware, no mock fallback."""
 
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 from typing import Any
-from urllib.error import URLError
-from urllib.request import urlopen
+
+from PIL import Image
 
 from capos.generation.backend import GenerationBackend, GenerationResult
+from capos.generation.comfyui.client import ComfyFailureKind, ComfyUIClient, classify_comfy_error
+from capos.generation.comfyui.workflows import (
+    inject_basic_params,
+    load_workflow,
+    workflow_is_configured,
+)
+from capos.generation.telemetry import record_generation_telemetry
+from capos.hardware.profile import load_hardware_profile, resolve_generation_settings
 
 
 class ComfyUIBackend(GenerationBackend):
@@ -16,50 +25,232 @@ class ComfyUIBackend(GenerationBackend):
 
     def __init__(self, base_url: str | None = None) -> None:
         self.base_url = (base_url or os.environ.get("CAPOS_COMFYUI_URL") or "").rstrip("/")
+        self._client: ComfyUIClient | None = None
+
+    def client(self) -> ComfyUIClient:
+        if not self.base_url:
+            raise RuntimeError("CAPOS_COMFYUI_URL not set")
+        if self._client is None:
+            self._client = ComfyUIClient(self.base_url)
+        return self._client
 
     def available(self) -> tuple[bool, str]:
         if not self.base_url:
             return False, "CAPOS_COMFYUI_URL not set"
-        try:
-            with urlopen(f"{self.base_url}/system_stats", timeout=3) as resp:
-                if resp.status == 200:
-                    return True, f"ComfyUI reachable at {self.base_url}"
-                return False, f"ComfyUI HTTP {resp.status}"
-        except URLError as exc:
-            return False, f"ComfyUI unreachable: {exc}"
-        except Exception as exc:  # noqa: BLE001
-            return False, f"ComfyUI check failed: {exc}"
+        health = ComfyUIClient(self.base_url).health()
+        return bool(health.get("ok")), str(health.get("reason"))
 
     def supports_reference_images(self) -> bool:
         return True
 
     def supports_edit(self) -> bool:
-        return True
+        ok, _ = workflow_is_configured("img2img-low-vram.json")
+        ok2, _ = workflow_is_configured("controlled-edit-low-vram.json")
+        # Advertise edit when ComfyUI is up even if templates need local config —
+        # capability is architectural; production_eligible still requires configure.
+        return True if self.base_url else (ok or ok2)
 
     def supports_inpaint(self) -> bool:
-        return True
+        ok, _ = workflow_is_configured("inpaint-low-vram.json")
+        return ok
+
+    def supports_control_image(self) -> bool:
+        ok, _ = workflow_is_configured("controlled-edit-low-vram.json")
+        return ok
+
+    def model_information(self) -> dict[str, Any]:
+        return {
+            "name": os.environ.get("CAPOS_COMFYUI_CHECKPOINT"),
+            "backend": self.name,
+            "licence_note": os.environ.get("CAPOS_COMFYUI_MODEL_LICENCE", "UNVERIFIED"),
+        }
 
     def generate_image(
         self,
         *,
         prompt: str,
         negative_prompt: str = "",
-        width: int = 1024,
-        height: int = 1024,
+        width: int = 512,
+        height: int = 512,
         seed: int | None = None,
         reference_images: list[str | Path] | None = None,
         output_path: str | Path | None = None,
         settings: dict[str, Any] | None = None,
     ) -> GenerationResult:
+        settings = dict(settings or {})
+        # Never fall back to mock from this backend.
         ok, reason = self.available()
         if not ok:
-            return GenerationResult(success=False, backend=self.name, error=reason)
-        # Workflow execution is environment-specific; do not fabricate outputs.
+            return GenerationResult(
+                success=False,
+                backend=self.name,
+                error=reason,
+                metadata={"failure_kind": ComfyFailureKind.UNAVAILABLE.value},
+            )
+
+        hw = resolve_generation_settings(load_hardware_profile())
+        # Hardware profile wins unless caller explicitly forces dimensions
+        width = int(settings.get("force_width", hw["width"]))
+        height = int(settings.get("force_height", hw["height"]))
+        # Guard: never start at 1024 on LOW_6GB unless explicitly forced
+        if hw.get("vram_class") == "LOW_6GB" and "force_width" not in settings:
+            width = min(width, int(hw.get("width", 512)))
+            height = min(height, int(hw.get("height", 512)))
+
+        workflow_name = settings.get("workflow") or os.environ.get(
+            "CAPOS_COMFYUI_WORKFLOW", "style-master-low-vram.json"
+        )
+        configured, cfg_reason = workflow_is_configured(workflow_name)
+        if not configured:
+            return GenerationResult(
+                success=False,
+                backend=self.name,
+                error=cfg_reason,
+                metadata={"failure_kind": ComfyFailureKind.CONFIG_MISSING.value},
+            )
+
+        retries = 0
+        max_retries = int(hw.get("oom_max_retries", 2))
+        fallbacks = list(hw.get("oom_fallback_widths") or [512, 448, 384])
+        sizes = [(width, height)]
+        for w in fallbacks:
+            if (w, w) not in sizes and w < width:
+                sizes.append((w, w))
+
+        last_error = ""
+        last_kind = ComfyFailureKind.UNKNOWN
+        t0 = time.time()
+        for _attempt, (w, h) in enumerate(sizes):
+            try:
+                result = self._run_once(
+                    prompt=prompt,
+                    negative_prompt=negative_prompt,
+                    width=w,
+                    height=h,
+                    seed=seed,
+                    output_path=output_path,
+                    workflow_name=workflow_name,
+                    settings=settings,
+                    retry_count=retries,
+                    started=t0,
+                )
+                return result
+            except Exception as exc:  # noqa: BLE001
+                last_error = str(exc)
+                last_kind = classify_comfy_error(last_error)
+                retries += 1
+                record_generation_telemetry(
+                    {
+                        "backend": self.name,
+                        "workflow": workflow_name,
+                        "width": w,
+                        "height": h,
+                        "success": False,
+                        "failure_kind": last_kind.value,
+                        "oom": last_kind == ComfyFailureKind.CUDA_OUT_OF_MEMORY,
+                        "retry_count": retries,
+                        "duration_ms": int((time.time() - t0) * 1000),
+                        "profile": hw.get("generation_profile"),
+                        "smoke_test": bool(settings.get("smoke_test")),
+                    }
+                )
+                if last_kind != ComfyFailureKind.CUDA_OUT_OF_MEMORY:
+                    break
+                if retries > max_retries:
+                    break
+                # try next smaller size
+                continue
+
         return GenerationResult(
             success=False,
             backend=self.name,
-            error=(
-                "ComfyUI is reachable but no CAPOS workflow template is configured. "
-                "Set CAPOS_COMFYUI_WORKFLOW_PATH to enable production generation."
-            ),
+            error=last_error or "ComfyUI generation failed",
+            metadata={
+                "failure_kind": (
+                    ComfyFailureKind.CUDA_OUT_OF_MEMORY.value
+                    if last_kind == ComfyFailureKind.CUDA_OUT_OF_MEMORY
+                    else last_kind.value
+                ),
+                "failed_resource_limit": last_kind == ComfyFailureKind.CUDA_OUT_OF_MEMORY,
+                "retry_count": retries,
+            },
         )
+
+    def _run_once(
+        self,
+        *,
+        prompt: str,
+        negative_prompt: str,
+        width: int,
+        height: int,
+        seed: int | None,
+        output_path: str | Path | None,
+        workflow_name: str,
+        settings: dict[str, Any],
+        retry_count: int,
+        started: float,
+    ) -> GenerationResult:
+        loaded = load_workflow(workflow_name)
+        wf = inject_basic_params(
+            loaded["prompt"],
+            positive=prompt,
+            negative=negative_prompt,
+            seed=seed,
+            width=width,
+            height=height,
+            steps=settings.get("steps"),
+            cfg=settings.get("cfg"),
+            checkpoint=os.environ.get("CAPOS_COMFYUI_CHECKPOINT"),
+        )
+        client = self.client()
+        prompt_id = client.queue_prompt(wf)
+        history = client.wait_for_completion(
+            prompt_id, timeout_s=float(settings.get("timeout_s", 300))
+        )
+        raw, meta = client.first_image_from_history(history)
+        out = Path(output_path) if output_path else Path(f"comfy_{prompt_id}.png")
+        client.save_image_bytes(raw, out)
+        # validate decode + dimensions
+        with Image.open(out) as img:
+            w, h = img.size
+            if w < 1 or h < 1:
+                raise RuntimeError(ComfyFailureKind.INVALID_OUTPUT.value)
+        duration_ms = int((time.time() - started) * 1000)
+        record_generation_telemetry(
+            {
+                "backend": self.name,
+                "model": os.environ.get("CAPOS_COMFYUI_CHECKPOINT"),
+                "workflow": workflow_name,
+                "width": w,
+                "height": h,
+                "resolution": f"{w}x{h}",
+                "duration_ms": duration_ms,
+                "success": True,
+                "oom": False,
+                "retry_count": retry_count,
+                "seed": seed,
+                "smoke_test": bool(settings.get("smoke_test")),
+                "non_production": bool(settings.get("smoke_test")),
+                "candidate_id": settings.get("candidate_id"),
+                "batch_id": settings.get("batch_id"),
+            }
+        )
+        return GenerationResult(
+            success=True,
+            output_path=out,
+            seed=seed,
+            backend=self.name,
+            model=os.environ.get("CAPOS_COMFYUI_CHECKPOINT"),
+            metadata={
+                "workflow": workflow_name,
+                "prompt_id": prompt_id,
+                "comfy_image": meta,
+                "width": w,
+                "height": h,
+                "duration_ms": duration_ms,
+                "smoke_test": bool(settings.get("smoke_test")),
+                "generation_resolution": f"{w}x{h}",
+            },
+        )
+
+

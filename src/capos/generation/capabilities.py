@@ -62,12 +62,18 @@ def capability_matrix() -> list[dict[str, Any]]:
 
 
 def select_production_provider(preferred: str | None = None) -> dict[str, Any]:
-    """Pick a real production-eligible provider. Never returns mock as production."""
+    """Pick a real production-eligible provider. Prefer local ComfyUI. Never mock."""
     matrix = capability_matrix()
     eligible = [r for r in matrix if r["production_eligible"]]
+    preferred = preferred or "comfyui"
     if preferred:
         for r in eligible:
             if r["name"] == preferred:
+                return r
+    # Prefer local routes over hosted inference when multiple are eligible
+    for name in ("comfyui", "local", "huggingface"):
+        for r in eligible:
+            if r["name"] == name:
                 return r
     if eligible:
         return eligible[0]
@@ -79,7 +85,8 @@ def select_production_provider(preferred: str | None = None) -> dict[str, Any]:
         "production_eligible": False,
         "non_production": False,
         "blocker": (
-            "Set HF_TOKEN for Hugging Face, install/configure local Diffusers weights, "
-            "or point CAPOS_COMFYUI_URL at a ComfyUI server. Mock art must not be used as canon."
+            "Configure CAPOS_COMFYUI_URL for local ComfyUI (preferred on RTX 3050 6GB), "
+            "or install local Diffusers / set HF_TOKEN. Mock art must not be used as canon."
         ),
+        "local_provider": "SETUP_REQUIRED",
     }

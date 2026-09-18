@@ -7,6 +7,7 @@ from typing import Any
 
 from capos.core.status import ProviderAvailability
 from capos.generation.registry import list_backends, try_register_optional_backends
+from capos.hardware.profile import detect_gpu, load_hardware_profile, resolve_generation_settings
 
 
 def classify_backend(name: str, health: dict[str, Any]) -> ProviderAvailability:
@@ -39,6 +40,53 @@ def classify_backend(name: str, health: dict[str, Any]) -> ProviderAvailability:
             return ProviderAvailability.NOT_CONFIGURED
         return ProviderAvailability.UNAVAILABLE
     return ProviderAvailability.AVAILABLE
+
+
+def comfyui_dashboard_panel() -> dict[str, Any]:
+    """Rich ComfyUI + hardware panel for Providers UI (no secrets)."""
+    from capos.generation.comfyui.workflows import list_workflows, workflow_is_configured
+    from capos.generation.comfyui_backend import ComfyUIBackend
+
+    hw = load_hardware_profile()
+    gen = resolve_generation_settings(hw)
+    gpu = detect_gpu()
+    backend = ComfyUIBackend()
+    ok, reason = backend.available()
+    availability = classify_backend("comfyui", {"available": ok, "reason": reason})
+    workflow = os.environ.get("CAPOS_COMFYUI_WORKFLOW", "style-master-low-vram.json")
+    wf_ok, wf_reason = workflow_is_configured(workflow)
+    checkpoint = os.environ.get("CAPOS_COMFYUI_CHECKPOINT")
+    licence = os.environ.get("CAPOS_COMFYUI_MODEL_LICENCE", "UNVERIFIED")
+    model_ready = bool(checkpoint) and wf_ok and ok
+    return {
+        "label": "COMFYUI LOCAL",
+        "status": availability.value,
+        "local_provider": "AVAILABLE" if ok and model_ready else "SETUP_REQUIRED",
+        "url_configured": bool(backend.base_url),
+        "url_host": backend.base_url or None,
+        "gpu": {
+            "detected": gpu.get("detected"),
+            "name": gpu.get("name") or hw.gpu_name_hint,
+            "vram_mb": gpu.get("vram_mb"),
+            "source": gpu.get("source"),
+            "error": gpu.get("error"),
+        },
+        "vram_class": hw.vram_class,
+        "profile_id": hw.profile_id,
+        "generation_profile": hw.generation_profile,
+        "resolution": f"{gen['width']}x{gen['height']}",
+        "concurrency": gen["concurrency"],
+        "model": checkpoint,
+        "model_licence": licence,
+        "workflow": workflow,
+        "workflow_configured": wf_ok,
+        "workflow_reason": wf_reason,
+        "workflows_on_disk": list_workflows(),
+        "capabilities": backend.health_check().get("capabilities"),
+        "production_eligible": bool(ok and model_ready),
+        "reason": reason,
+        "connection_ok": ok,
+    }
 
 
 def provider_dashboard_status() -> list[dict[str, Any]]:
@@ -93,6 +141,26 @@ def provider_dashboard_status() -> list[dict[str, Any]]:
                 "reason": "HF_TOKEN not set" if not token else "huggingface backend not importable",
                 "supports_edit": False,
                 "supports_reference_images": False,
+                "supports_inpaint": False,
+                "model": None,
+                "prefer_reference_edit": True,
+            }
+        )
+    if "comfyui" not in names:
+        rows.append(
+            {
+                "name": "comfyui",
+                "availability": (
+                    ProviderAvailability.NOT_CONFIGURED.value
+                    if not os.environ.get("CAPOS_COMFYUI_URL")
+                    else ProviderAvailability.UNAVAILABLE.value
+                ),
+                "available_raw": False,
+                "reason": "CAPOS_COMFYUI_URL not set"
+                if not os.environ.get("CAPOS_COMFYUI_URL")
+                else "comfyui backend not importable",
+                "supports_edit": True,
+                "supports_reference_images": True,
                 "supports_inpaint": False,
                 "model": None,
                 "prefer_reference_edit": True,

@@ -22,6 +22,11 @@ class CandidateAsset(BaseModel):
     model: str | None = None
     seed: int | None = None
     prompt_version: str | None = None
+    workflow: str | None = None
+    generation_resolution: str | None = None
+    duration_ms: int | None = None
+    generated_at: str | None = None
+    smoke_test: bool = False
     qa_summary: dict[str, Any] = Field(default_factory=dict)
     status: CanonStatus = CanonStatus.CANDIDATE
     non_production: bool = False
