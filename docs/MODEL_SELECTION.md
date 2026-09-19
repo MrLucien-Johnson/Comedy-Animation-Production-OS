@@ -68,12 +68,28 @@ Prefer workflows that can grow into:
 
 Staged generation > stacking everything in one graph.
 
-## Initial production choice process
+## Initial production choice (operator-verified)
 
-1. Install ComfyUI on the RTX 3050 machine  
-2. Load one SD1.5-class cartoon checkpoint under SAFE 512  
-3. Run CAPOS smoke test workflow  
-4. If stable, clear `template_only` on `style-master-low-vram.json` (or point `CAPOS_COMFYUI_WORKFLOW_PATH`)  
-5. Generate three style candidates sequentially  
-6. Human selects style  
-7. Only then enable BALANCED/QUALITY after telemetry proves stability  
+| Field | Value |
+|-------|-------|
+| Checkpoint | `toonyou_beta6.safetensors` |
+| Source | `frankjoshua/toonyou_beta6` (+ Civitai ToonYou listing) |
+| Architecture | SD1.5-class |
+| VRAM class | LOW_6GB — RECOMMENDED |
+| Provenance file | `config/models/toonyou_beta6.json` |
+| Licence status | **UNVERIFIED** until human confirms source terms |
+| Commercial use | **REQUIRES_AUTHOR_CONTACT** per published author addendum (not “FREE”) |
+
+Do **not** label ToonYou as unrestricted commercial. Set:
+
+```bash
+CAPOS_COMFYUI_CHECKPOINT=toonyou_beta6.safetensors
+CAPOS_COMFYUI_MODEL_LICENCE="reviewed notes…"
+CAPOS_COMFYUI_MODEL_LICENCE_STATUS=VERIFIED   # only after review
+```
+
+and update `commercial_use_operator_ack` in the provenance JSON when commercial permission is resolved.
+
+`SEASON_PRODUCTION_READY` **fails closed** while licence is unverified / commercial ack missing.
+
+## Capability needs for Likkle Jay

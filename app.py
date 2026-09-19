@@ -14,7 +14,7 @@ from capos.canon.diff import compare_to_canon
 from capos.canon.pipeline import CanonCreationPipeline
 from capos.core.paths import project_root, series_dir
 from capos.core.schemas import WATERMARK_EXACT
-from capos.core.status import CanonStatus, StageStatus
+from capos.core.status import CanonStatus, CanonStep, StageStatus
 from capos.domain.series import (
     list_series,
     load_episode_brief,
@@ -161,7 +161,7 @@ elif nav == "Canon":
                 st.rerun()
 
 elif nav == "Canon Candidates":
-    st.subheader("Canon candidate batches (human selection required)")
+    st.subheader("Canon Candidates — human selection required")
     pipe = CanonCreationPipeline(series_id, root=root)
     st.json(pipe.next_actionable_step())
     c1, c2, c3 = st.columns(3)
@@ -187,49 +187,82 @@ elif nav == "Canon Candidates":
     store_b = CandidateStore(series_id, root=root)
     for batch in store_b.list_batches():
         with st.expander(
-            f"{batch.batch_id} · {_status_badge(batch.status)} → {batch.target_asset_id}"
+            f"{batch.batch_id} · {_status_badge(batch.status)} → {batch.target_asset_id}",
+            expanded=batch.step.value == "STYLE_MASTER" if hasattr(batch.step, "value") else False,
         ):
             if batch.blocker:
                 st.error(batch.blocker)
             st.write(batch.recommendation_notes)
-            for cand in batch.candidates:
-                cols = st.columns([1, 2, 1])
-                if cand.file and Path(cand.file).is_file():
-                    cols[0].image(cand.file, use_container_width=True)
-                else:
-                    cols[0].warning("No file")
-                cols[1].markdown(
-                    f"**{cand.candidate_id}**  \n"
-                    f"model: `{cand.model}` · seed: `{cand.seed}`  \n"
-                    f"resolution: `{cand.generation_resolution}` · "
-                    f"duration: `{cand.duration_ms} ms`  \n"
-                    f"workflow: `{cand.workflow}` · backend: `{cand.backend}`"
-                )
-                cols[1].json(cand.qa_summary)
-                if cand.smoke_test or cand.non_production:
-                    cols[2].warning("NON-PRODUCTION / SMOKE — cannot lock as canon")
-                else:
-                    a1, a2, a3 = cols[2].columns(3)
-                    if a1.button("SELECT", key=f"sel_{batch.batch_id}_{cand.candidate_id}"):
+            # Side-by-side for style candidates
+            active = [c for c in batch.candidates if c.status != CanonStatus.REJECTED]
+            if not active:
+                active = list(batch.candidates)
+            cols = st.columns(max(len(active), 1))
+            for idx, cand in enumerate(active):
+                col = cols[idx % len(cols)]
+                with col:
+                    st.markdown(f"**{cand.candidate_id}**")
+                    if cand.file and Path(cand.file).is_file():
+                        st.image(cand.file, use_container_width=True)
+                    else:
+                        st.warning("No file")
+                    st.caption(
+                        f"checkpoint: `{cand.model}` · seed: `{cand.seed}` · "
+                        f"{cand.generation_resolution} · {cand.duration_ms} ms"
+                    )
+                    st.json(
+                        {
+                            "qa": cand.qa_summary,
+                            "licence": cand.model_licence_status,
+                            "workflow": cand.workflow,
+                            "provider": cand.provider,
+                        }
+                    )
+                    if cand.smoke_test or cand.non_production:
+                        st.warning("NON-PRODUCTION / SMOKE — cannot lock as canon")
+                        continue
+                    if st.button("SELECT", key=f"sel_{batch.batch_id}_{cand.candidate_id}"):
                         try:
                             pipe.promote_selection_to_canon(batch.batch_id, cand.candidate_id)
                             st.success(
-                                f"Selected {cand.candidate_id}. Now APPROVE on Canon page to lock."
+                                f"Selected {cand.candidate_id}. APPROVE on Canon page to lock."
                             )
                             st.rerun()
                         except Exception as exc:
                             st.error(str(exc))
-                    if a2.button("REJECT", key=f"rej_{batch.batch_id}_{cand.candidate_id}"):
+                    if st.button("REJECT", key=f"rej_{batch.batch_id}_{cand.candidate_id}"):
                         cand.status = CanonStatus.REJECTED
                         store_b.upsert(batch)
                         st.rerun()
-                    if a3.button(
-                        "REGENERATE", key=f"regen_{batch.batch_id}_{cand.candidate_id}"
+                    if cand.candidate_id.startswith("style-master-candidate-00") or (
+                        cand.seed is not None and "style-master" in cand.candidate_id
                     ):
-                        st.info(
-                            "Regenerate runs a new style batch (×3 sequential). "
-                            "Use Generate STYLE candidates above."
-                        )
+                        if st.button(
+                            "REGENERATE SAME SEED",
+                            key=f"rs_{batch.batch_id}_{cand.candidate_id}",
+                        ):
+                            try:
+                                slot = cand.regenerates or cand.candidate_id
+                                if slot not in {
+                                    "style-master-candidate-001",
+                                    "style-master-candidate-002",
+                                    "style-master-candidate-003",
+                                }:
+                                    # Map regen ids back to base slot via regenerates chain
+                                    slot = cand.candidate_id.split("-r")[0]
+                                st.write(pipe.regenerate_style_same_seed(slot).model_dump())
+                                st.rerun()
+                            except Exception as exc:
+                                st.error(str(exc))
+            if batch.step == CanonStep.STYLE_MASTER or (
+                hasattr(batch.step, "value") and batch.step.value == "STYLE_MASTER"
+            ):
+                if st.button("NEW CANDIDATE (new seed)", key=f"new_{batch.batch_id}"):
+                    try:
+                        st.write(pipe.create_new_style_candidate().model_dump())
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(str(exc))
 elif nav == "Compare to Canon":
     st.subheader("COMPARE TO CANON")
     parent_id = st.text_input("Parent / approved asset id", "style-likkle-jay-v1")

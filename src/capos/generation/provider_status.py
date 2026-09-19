@@ -44,8 +44,13 @@ def classify_backend(name: str, health: dict[str, Any]) -> ProviderAvailability:
 
 def comfyui_dashboard_panel() -> dict[str, Any]:
     """Rich ComfyUI + hardware panel for Providers UI (no secrets)."""
-    from capos.generation.comfyui.workflows import list_workflows, workflow_is_configured
+    from capos.generation.comfyui.workflows import (
+        describe_workflow,
+        list_workflows,
+        workflow_is_configured,
+    )
     from capos.generation.comfyui_backend import ComfyUIBackend
+    from capos.generation.model_licence import environment_runtime_status, load_model_provenance
 
     hw = load_hardware_profile()
     gen = resolve_generation_settings(hw)
@@ -53,15 +58,26 @@ def comfyui_dashboard_panel() -> dict[str, Any]:
     backend = ComfyUIBackend()
     ok, reason = backend.available()
     availability = classify_backend("comfyui", {"available": ok, "reason": reason})
-    workflow = os.environ.get("CAPOS_COMFYUI_WORKFLOW", "style-master-low-vram.json")
+    workflow = os.environ.get("CAPOS_COMFYUI_WORKFLOW", "style-master-toonyou-beta6.json")
     wf_ok, wf_reason = workflow_is_configured(workflow)
-    checkpoint = os.environ.get("CAPOS_COMFYUI_CHECKPOINT")
-    licence = os.environ.get("CAPOS_COMFYUI_MODEL_LICENCE", "UNVERIFIED")
-    model_ready = bool(checkpoint) and wf_ok and ok
+    checkpoint = os.environ.get("CAPOS_COMFYUI_CHECKPOINT", "toonyou_beta6.safetensors")
+    prov = load_model_provenance()
+    runtime = environment_runtime_status()
+    model_ready = bool(os.environ.get("CAPOS_COMFYUI_CHECKPOINT")) and wf_ok and ok
+    local_status = runtime["local_provider_status"]
+    if ok and model_ready:
+        local_status = "LOCAL_RUNTIME_VERIFIED"
+    elif not ok:
+        local_status = "LOCAL_EXECUTION_REQUIRED"
+    try:
+        wf_desc = describe_workflow(workflow)
+    except Exception as exc:  # noqa: BLE001
+        wf_desc = {"error": str(exc)}
     return {
         "label": "COMFYUI LOCAL",
         "status": availability.value,
-        "local_provider": "AVAILABLE" if ok and model_ready else "SETUP_REQUIRED",
+        "local_provider": local_status,
+        "runtime": runtime,
         "url_configured": bool(backend.base_url),
         "url_host": backend.base_url or None,
         "gpu": {
@@ -76,16 +92,21 @@ def comfyui_dashboard_panel() -> dict[str, Any]:
         "generation_profile": hw.generation_profile,
         "resolution": f"{gen['width']}x{gen['height']}",
         "concurrency": gen["concurrency"],
-        "model": checkpoint,
-        "model_licence": licence,
+        "model": checkpoint if os.environ.get("CAPOS_COMFYUI_CHECKPOINT") else None,
+        "model_default": "toonyou_beta6.safetensors",
+        "model_licence": prov.get("licence"),
+        "model_licence_status": prov.get("licence_status"),
+        "commercial_use": prov.get("commercial_use"),
         "workflow": workflow,
         "workflow_configured": wf_ok,
         "workflow_reason": wf_reason,
+        "workflow_describe": wf_desc,
         "workflows_on_disk": list_workflows(),
         "capabilities": backend.health_check().get("capabilities"),
         "production_eligible": bool(ok and model_ready),
         "reason": reason,
         "connection_ok": ok,
+        "operator_manual_note": runtime["production_machine"]["operator_manual_verification"],
     }
 
 

@@ -88,5 +88,5 @@ def select_production_provider(preferred: str | None = None) -> dict[str, Any]:
             "Configure CAPOS_COMFYUI_URL for local ComfyUI (preferred on RTX 3050 6GB), "
             "or install local Diffusers / set HF_TOKEN. Mock art must not be used as canon."
         ),
-        "local_provider": "SETUP_REQUIRED",
+        "local_provider": "LOCAL_EXECUTION_REQUIRED",
     }

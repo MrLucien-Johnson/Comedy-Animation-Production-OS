@@ -111,6 +111,30 @@ class ComfyUIClient:
             raise RuntimeError(f"ComfyUI /queue failed HTTP {status}")
         return json.loads(body.decode("utf-8"))
 
+    def list_checkpoints(self) -> list[str]:
+        """Best-effort checkpoint list from ComfyUI. Empty if endpoint unsupported."""
+        for path in ("/models/checkpoints", "/experiment/models/checkpoints"):
+            try:
+                status, body = self._request("GET", path, timeout=5)
+                if status == 200 and body:
+                    data = json.loads(body.decode("utf-8"))
+                    if isinstance(data, list):
+                        return [str(x) for x in data]
+            except Exception:  # noqa: BLE001
+                continue
+        return []
+
+    def checkpoint_present(self, name: str) -> tuple[bool, str]:
+        names = self.list_checkpoints()
+        if not names:
+            return (
+                False,
+                "Could not list checkpoints via API — verify manually in ComfyUI models/checkpoints/",
+            )
+        if name in names or any(name in n for n in names):
+            return True, f"found in ComfyUI checkpoint list ({len(names)} total)"
+        return False, f"checkpoint '{name}' not found among {len(names)} listed checkpoints"
+
     def interrupt(self) -> None:
         self._request("POST", "/interrupt", data=b"{}")
 

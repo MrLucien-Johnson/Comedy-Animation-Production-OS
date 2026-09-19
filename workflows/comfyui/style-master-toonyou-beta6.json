@@ -1,9 +1,10 @@
 {
-  "workflow_id": "provider-smoke-toonyou-v1",
+  "workflow_id": "style-master-toonyou-beta6-v1",
   "workflow_version": "1",
   "template_only": false,
   "requires_local_checkpoint": true,
   "operator_verified_topology": true,
+  "operator_verification_note": "Topology matches operator-verified ComfyUI Desktop graph (CheckpointLoaderSimple → CLIP encodes → EmptyLatent → KSampler → VAEDecode → SaveImage). Prefer replacing this file with ComfyUI Save (API Format) export if node IDs differ.",
   "vram_class": "LOW_6GB",
   "intended_resolution": [512, 512],
   "default_checkpoint": "toonyou_beta6.safetensors",
@@ -15,7 +16,7 @@
     "denoise": 1.0,
     "batch_size": 1
   },
-  "description": "CAPOS PROVIDER_SMOKE_TEST workflow — non-canon. Matches operator-verified SAFE graph.",
+  "description": "CAPOS API workflow for style-master on LOW_VRAM_6GB with ToonYou Beta 6. CAPOS always injects an explicit seed — do not rely on randomize-after-generate.",
   "prompt": {
     "1": {
       "class_type": "CheckpointLoaderSimple",
@@ -93,7 +94,7 @@
     "7": {
       "class_type": "SaveImage",
       "inputs": {
-        "filename_prefix": "capos_smoke-test",
+        "filename_prefix": "capos_style_master",
         "images": ["6", 0]
       },
       "_meta": {

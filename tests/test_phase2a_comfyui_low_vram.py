@@ -113,6 +113,7 @@ def test_bounded_oom_retry_and_resolution_fallback(monkeypatch, tmp_project):
         with patch.object(backend, "_run_once", side_effect=boom):
             result = backend.generate_image(
                 prompt="x",
+                seed=42,
                 settings={"force_width": 512, "force_height": 512, "workflow": str(wf_path)},
             )
     assert result.success is False
@@ -199,14 +200,14 @@ def test_style_batch_blocked_no_mock_promotion(tmp_project, monkeypatch):
     assert not batch.candidates
     sel = select_production_provider()
     assert sel.get("production_eligible") is False
-    assert sel.get("local_provider") == "SETUP_REQUIRED"
+    assert sel.get("local_provider") in {"SETUP_REQUIRED", "LOCAL_EXECUTION_REQUIRED"}
 
 
 def test_comfyui_panel_setup_required(monkeypatch):
     monkeypatch.delenv("CAPOS_COMFYUI_URL", raising=False)
     panel = comfyui_dashboard_panel()
     assert panel["label"] == "COMFYUI LOCAL"
-    assert panel["local_provider"] == "SETUP_REQUIRED"
+    assert panel["local_provider"] in {"SETUP_REQUIRED", "LOCAL_EXECUTION_REQUIRED"}
     assert panel["vram_class"] == "LOW_6GB"
     rows = provider_dashboard_status()
     assert any(r["name"] == "comfyui" for r in rows)
@@ -265,7 +266,7 @@ def test_smoke_test_excluded_from_canon_path(tmp_project, monkeypatch):
     assert report["ok"] is False
     assert report["canon"] is False
     assert report["tag"] == "PROVIDER_SMOKE_TEST"
-    assert report["local_provider"] == "SETUP_REQUIRED"
+    assert report["local_provider"] in {"SETUP_REQUIRED", "LOCAL_EXECUTION_REQUIRED"}
 
 
 def test_mock_still_excluded_from_production():

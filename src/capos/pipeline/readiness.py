@@ -169,10 +169,31 @@ def evaluate_season_production_ready(
         )
 
     failed = [c for c in report.checks if c.status == QAResultStatus.FAIL]
+    # Licence fail-closed
+    from capos.generation.model_licence import production_licence_gate
+
+    lic_ok, lic_reason = production_licence_gate(root=root)
+    if lic_ok:
+        report.checks.append(
+            QACheckResult(
+                check_id="MODEL_LICENCE",
+                status=QAResultStatus.PASS,
+                message="Model licence VERIFIED with commercial determination",
+            )
+        )
+    else:
+        report.checks.append(
+            QACheckResult(
+                check_id="MODEL_LICENCE",
+                status=QAResultStatus.FAIL,
+                message=lic_reason,
+            )
+        )
+        report.notes.append(lic_reason)
+
+    failed = [c for c in report.checks if c.status == QAResultStatus.FAIL]
     report.season_production_ready = len(failed) == 0
     report.ready = report.season_production_ready
-    report.content_ready = len(report.approved) > 0 and len(report.missing) == 0
-    # Content ready requires approved masters with files — still fail until all required pass
     report.content_ready = report.season_production_ready
     if not report.season_production_ready:
         report.notes.append(

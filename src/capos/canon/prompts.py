@@ -3,20 +3,32 @@
 from __future__ import annotations
 
 STYLE_MASTER_PROMPT = """
-Create a STYLE MASTER reference board for a fictional family-friendly 2D animated comedy series.
-Warm Jamaican/Caribbean-inspired environment feeling.
-Bold dark outlines, flat shading, warm earthy palette, slight vintage texture.
-Expressive cartoon acting, clean silhouettes, simple-animation friendly.
-Square 1:1 composition showing style samples: character silhouette language, environment colour
-keys, prop line weight — NOT a finished episode frame.
-Fictional animated cartoon only. No photorealism. No 3D render look. No anime/manga drift.
-No artist-name imitation. No text, letters, watermark, or logos in the image.
+professional original 2D cartoon illustration, warm family comedy animation,
+Caribbean/Jamaican-inspired environment atmosphere, bold clean dark outlines,
+flat/cel shading, warm earthy colours, simple readable silhouettes,
+expressive facial language, subtle analogue/paper texture,
+animation-friendly construction, consistent line weight, clean composition.
+STYLE MASTER reference only — establish visual language for a fictional series,
+NOT a definitive character design sheet for Likkle Jay.
+Square 1:1. Fictional animated cartoon only.
+No photorealism, photography, 3D CGI, anime/manga styling.
+No text, letters, logos, watermarks, or signatures.
 """.strip()
 
 STYLE_NEGATIVE = """
-photorealistic, live action, 3d render, cgi, anime, manga, hyper detailed, noisy, text,
-letters, watermark, logo, NSFW, gore, celebrity likeness
+photorealistic, photography, live action, 3d render, cgi, anime, manga,
+hyper detailed, complex lighting, text, letters, watermark, logo, signature,
+NSFW, gore, celebrity likeness
 """.strip()
+
+# Deterministic seeds permanently bound to style-master candidate slots
+STYLE_MASTER_SEEDS: dict[str, int] = {
+    "style-master-candidate-001": 305011,
+    "style-master-candidate-002": 305022,
+    "style-master-candidate-003": 305033,
+}
+
+PROMPT_COMPILER_VERSION = "capos-style-master-v2"
 
 LIKKLE_JAY_MASTER_PROMPT = """
 Fictional male cartoon character MASTER reference. Young character design.

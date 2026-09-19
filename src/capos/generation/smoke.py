@@ -38,7 +38,7 @@ def run_provider_smoke_test(*, root: Path | None = None) -> dict[str, Any]:
             "tag": "PROVIDER_SMOKE_TEST",
             "canon": False,
             "reason": panel.get("reason") or "ComfyUI not available",
-            "local_provider": panel.get("local_provider", "SETUP_REQUIRED"),
+            "local_provider": panel.get("local_provider", "LOCAL_EXECUTION_REQUIRED"),
             "panel": panel,
         }
     if not panel.get("workflow_configured") and not os.environ.get("CAPOS_COMFYUI_WORKFLOW_PATH"):
@@ -47,16 +47,16 @@ def run_provider_smoke_test(*, root: Path | None = None) -> dict[str, Any]:
             "tag": "PROVIDER_SMOKE_TEST",
             "canon": False,
             "reason": panel.get("workflow_reason") or "Workflow not production-configured",
-            "local_provider": "SETUP_REQUIRED",
+            "local_provider": "LOCAL_EXECUTION_REQUIRED",
             "panel": panel,
         }
-    if not panel.get("model"):
+    if not panel.get("model") and not os.environ.get("CAPOS_COMFYUI_CHECKPOINT"):
         return {
             "ok": False,
             "tag": "PROVIDER_SMOKE_TEST",
             "canon": False,
             "reason": "CAPOS_COMFYUI_CHECKPOINT not set",
-            "local_provider": "SETUP_REQUIRED",
+            "local_provider": "LOCAL_EXECUTION_REQUIRED",
             "panel": panel,
         }
 
@@ -84,8 +84,11 @@ def run_provider_smoke_test(*, root: Path | None = None) -> dict[str, Any]:
                 "non_production": True,
                 "workflow": "smoke-test.json",
                 "candidate_id": "PROVIDER_SMOKE_TEST",
-                "steps": hw.get("steps_hint"),
-                "cfg": hw.get("cfg_hint"),
+                "steps": hw.get("steps_hint") or 20,
+                "cfg": hw.get("cfg_hint") or 7.0,
+                "sampler_name": "euler",
+                "scheduler": "normal",
+                "denoise": 1.0,
             },
         )
     if not result.success or not result.output_path:
@@ -95,7 +98,9 @@ def run_provider_smoke_test(*, root: Path | None = None) -> dict[str, Any]:
             "canon": False,
             "reason": result.error or "smoke generation failed",
             "metadata": result.metadata,
-            "local_provider": "AVAILABLE" if panel.get("connection_ok") else "SETUP_REQUIRED",
+            "local_provider": "LOCAL_RUNTIME_VERIFIED"
+            if panel.get("connection_ok")
+            else "LOCAL_EXECUTION_REQUIRED",
         }
     validation = validate_candidate_image(Path(result.output_path))
     if not validation["ok"]:
@@ -125,7 +130,7 @@ def run_provider_smoke_test(*, root: Path | None = None) -> dict[str, Any]:
         "workflow": result.metadata.get("workflow"),
         "generation_resolution": result.metadata.get("generation_resolution"),
         "duration_ms": result.metadata.get("duration_ms"),
-        "local_provider": "AVAILABLE",
+        "local_provider": "LOCAL_RUNTIME_VERIFIED",
         "note": "Smoke test only — not visual canon.",
     }
 

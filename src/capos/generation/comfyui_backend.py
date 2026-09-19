@@ -16,6 +16,7 @@ from capos.generation.comfyui.workflows import (
     load_workflow,
     workflow_is_configured,
 )
+from capos.generation.model_licence import load_model_provenance
 from capos.generation.telemetry import record_generation_telemetry
 from capos.hardware.profile import load_hardware_profile, resolve_generation_settings
 
@@ -46,8 +47,6 @@ class ComfyUIBackend(GenerationBackend):
     def supports_edit(self) -> bool:
         ok, _ = workflow_is_configured("img2img-low-vram.json")
         ok2, _ = workflow_is_configured("controlled-edit-low-vram.json")
-        # Advertise edit when ComfyUI is up even if templates need local config —
-        # capability is architectural; production_eligible still requires configure.
         return True if self.base_url else (ok or ok2)
 
     def supports_inpaint(self) -> bool:
@@ -59,10 +58,16 @@ class ComfyUIBackend(GenerationBackend):
         return ok
 
     def model_information(self) -> dict[str, Any]:
+        prov = load_model_provenance()
         return {
-            "name": os.environ.get("CAPOS_COMFYUI_CHECKPOINT"),
+            "name": os.environ.get("CAPOS_COMFYUI_CHECKPOINT") or prov.get("model"),
             "backend": self.name,
-            "licence_note": os.environ.get("CAPOS_COMFYUI_MODEL_LICENCE", "UNVERIFIED"),
+            "provider": "comfyui-local",
+            "family": prov.get("family") or prov.get("architecture"),
+            "licence_status": prov.get("licence_status"),
+            "commercial_use": prov.get("commercial_use"),
+            "licence_note": os.environ.get("CAPOS_COMFYUI_MODEL_LICENCE") or prov.get("licence"),
+            "source": prov.get("source"),
         }
 
     def generate_image(
@@ -78,7 +83,13 @@ class ComfyUIBackend(GenerationBackend):
         settings: dict[str, Any] | None = None,
     ) -> GenerationResult:
         settings = dict(settings or {})
-        # Never fall back to mock from this backend.
+        if seed is None:
+            return GenerationResult(
+                success=False,
+                backend=self.name,
+                error="Explicit seed required — CAPOS does not use uncontrolled randomize",
+                metadata={"failure_kind": ComfyFailureKind.CONFIG_MISSING.value},
+            )
         ok, reason = self.available()
         if not ok:
             return GenerationResult(
@@ -89,16 +100,14 @@ class ComfyUIBackend(GenerationBackend):
             )
 
         hw = resolve_generation_settings(load_hardware_profile())
-        # Hardware profile wins unless caller explicitly forces dimensions
         width = int(settings.get("force_width", hw["width"]))
         height = int(settings.get("force_height", hw["height"]))
-        # Guard: never start at 1024 on LOW_6GB unless explicitly forced
         if hw.get("vram_class") == "LOW_6GB" and "force_width" not in settings:
             width = min(width, int(hw.get("width", 512)))
             height = min(height, int(hw.get("height", 512)))
 
         workflow_name = settings.get("workflow") or os.environ.get(
-            "CAPOS_COMFYUI_WORKFLOW", "style-master-low-vram.json"
+            "CAPOS_COMFYUI_WORKFLOW", "style-master-toonyou-beta6.json"
         )
         configured, cfg_reason = workflow_is_configured(workflow_name)
         if not configured:
@@ -122,7 +131,7 @@ class ComfyUIBackend(GenerationBackend):
         t0 = time.time()
         for _attempt, (w, h) in enumerate(sizes):
             try:
-                result = self._run_once(
+                return self._run_once(
                     prompt=prompt,
                     negative_prompt=negative_prompt,
                     width=w,
@@ -134,7 +143,6 @@ class ComfyUIBackend(GenerationBackend):
                     retry_count=retries,
                     started=t0,
                 )
-                return result
             except Exception as exc:  # noqa: BLE001
                 last_error = str(exc)
                 last_kind = classify_comfy_error(last_error)
@@ -158,8 +166,6 @@ class ComfyUIBackend(GenerationBackend):
                     break
                 if retries > max_retries:
                     break
-                # try next smaller size
-                continue
 
         return GenerationResult(
             success=False,
@@ -191,6 +197,23 @@ class ComfyUIBackend(GenerationBackend):
         started: float,
     ) -> GenerationResult:
         loaded = load_workflow(workflow_name)
+        meta_wf = loaded.get("_meta") or {}
+        steps = int(settings.get("steps") or meta_wf.get("default_settings", {}).get("steps") or 20)
+        cfg = float(settings.get("cfg") or meta_wf.get("default_settings", {}).get("cfg") or 7.0)
+        sampler_name = settings.get("sampler_name") or meta_wf.get("default_settings", {}).get(
+            "sampler_name", "euler"
+        )
+        scheduler = settings.get("scheduler") or meta_wf.get("default_settings", {}).get(
+            "scheduler", "normal"
+        )
+        denoise = float(
+            settings.get("denoise")
+            if settings.get("denoise") is not None
+            else meta_wf.get("default_settings", {}).get("denoise", 1.0)
+        )
+        checkpoint = os.environ.get("CAPOS_COMFYUI_CHECKPOINT") or meta_wf.get(
+            "default_checkpoint", "toonyou_beta6.safetensors"
+        )
         wf = inject_basic_params(
             loaded["prompt"],
             positive=prompt,
@@ -198,9 +221,12 @@ class ComfyUIBackend(GenerationBackend):
             seed=seed,
             width=width,
             height=height,
-            steps=settings.get("steps"),
-            cfg=settings.get("cfg"),
-            checkpoint=os.environ.get("CAPOS_COMFYUI_CHECKPOINT"),
+            steps=steps,
+            cfg=cfg,
+            checkpoint=checkpoint,
+            sampler_name=sampler_name,
+            scheduler=scheduler,
+            denoise=denoise,
         )
         client = self.client()
         prompt_id = client.queue_prompt(wf)
@@ -210,16 +236,16 @@ class ComfyUIBackend(GenerationBackend):
         raw, meta = client.first_image_from_history(history)
         out = Path(output_path) if output_path else Path(f"comfy_{prompt_id}.png")
         client.save_image_bytes(raw, out)
-        # validate decode + dimensions
         with Image.open(out) as img:
             w, h = img.size
             if w < 1 or h < 1:
                 raise RuntimeError(ComfyFailureKind.INVALID_OUTPUT.value)
         duration_ms = int((time.time() - started) * 1000)
+        prov = load_model_provenance()
         record_generation_telemetry(
             {
                 "backend": self.name,
-                "model": os.environ.get("CAPOS_COMFYUI_CHECKPOINT"),
+                "model": checkpoint,
                 "workflow": workflow_name,
                 "width": w,
                 "height": h,
@@ -240,17 +266,28 @@ class ComfyUIBackend(GenerationBackend):
             output_path=out,
             seed=seed,
             backend=self.name,
-            model=os.environ.get("CAPOS_COMFYUI_CHECKPOINT"),
+            model=checkpoint,
             metadata={
+                "provider": "comfyui-local",
                 "workflow": workflow_name,
+                "workflow_id": meta_wf.get("workflow_id"),
+                "workflow_version": meta_wf.get("workflow_version"),
                 "prompt_id": prompt_id,
                 "comfy_image": meta,
                 "width": w,
                 "height": h,
+                "steps": steps,
+                "cfg": cfg,
+                "sampler_name": sampler_name,
+                "scheduler": scheduler,
+                "denoise": denoise,
                 "duration_ms": duration_ms,
                 "smoke_test": bool(settings.get("smoke_test")),
                 "generation_resolution": f"{w}x{h}",
+                "positive_prompt": prompt,
+                "negative_prompt": negative_prompt,
+                "model_family": prov.get("architecture") or prov.get("family"),
+                "model_licence_status": prov.get("licence_status"),
+                "checkpoint": checkpoint,
             },
         )
-
-

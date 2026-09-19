@@ -37,41 +37,32 @@
 ## Local provider status
 
 ```text
-LOCAL_PROVIDER = SETUP_REQUIRED
-```
+ENGINEERING_ENVIRONMENT: NO LOCAL GPU / COMFYUI ACCESS (typical cloud agent)
+PRODUCTION_MACHINE: LOCAL COMFYUI MANUALLY VERIFIED BY OPERATOR
+  checkpoint=toonyou_beta6.safetensors @ 512×512 SAFE (euler/normal/20/cfg7)
 
-Cloud/agent environments without NVIDIA + ComfyUI cannot generate production images.
-The production machine (RTX 3050 6 GB) must complete setup below.
+On this cloud workspace: LOCAL_EXECUTION_REQUIRED
+On production machine after activate: LOCAL_RUNTIME_VERIFIED → AWAITING_HUMAN_STYLE_SELECTION
+```
 
 **Mock art is intentionally refused as production canon.**
 
-## Exact blocker for visual generation
+## Exact blocker for visual generation (cloud)
 
-1. `CAPOS_COMFYUI_URL` unset or ComfyUI unreachable  
-2. Checkpoint / workflow still `template_only` or `CAPOS_COMFYUI_CHECKPOINT` unset  
-3. Model licence not recorded (`CAPOS_COMFYUI_MODEL_LICENCE`)
+Cloud cannot reach the operator’s `127.0.0.1:8188`. Run activation on the RTX 3050 machine.
 
-## Exact human / machine actions (production GPU)
+## Exact human actions (production GPU)
 
-1. Follow `docs/COMFYUI_LOCAL_SETUP.md` (RTX 3050 6 GB section)  
-2. Follow `docs/MODEL_SELECTION.md` — pick one SD1.5-class cartoon checkpoint; record licence  
-3. Set env (never commit secrets):
-
-```bash
-CAPOS_COMFYUI_URL=http://127.0.0.1:8188
-CAPOS_COMFYUI_CHECKPOINT=your_model.safetensors
-CAPOS_COMFYUI_MODEL_LICENCE="licence-id-or-URL"
-# clear template_only or:
-# CAPOS_COMFYUI_WORKFLOW_PATH=/path/to/exported_api_workflow.json
-```
-
-4. `python scripts/phase2a_comfyui_smoke_and_style.py`  
-5. Open Streamlit → **Canon Candidates** → select ONE style → APPROVE/LOCK  
-6. Stop — do not auto-advance to characters until style is human-approved  
+1. Start ComfyUI Desktop API  
+2. Copy `.env.example` → `.env` (never commit) with checkpoint + URL  
+3. Optional: export API workflow — see `docs/COMFYUI_API_WORKFLOW.md`  
+4. Review licence in `config/models/toonyou_beta6.json` (do not assume commercial “free”)  
+5. `python scripts/phase2a_local_activate.py --smoke --style`  
+6. Streamlit → Canon Candidates → SELECT style → stop until human approval  
 
 ## Docs
 
 - `docs/COMFYUI_LOCAL_SETUP.md`  
+- `docs/COMFYUI_API_WORKFLOW.md`  
 - `docs/MODEL_SELECTION.md`  
-- `docs/IMAGE_GENERATION.md`  
-- `docs/PHASE2_CANON_CREATION.md`  
+- `docs/PHASE2A_COMFYUI_LOW_VRAM.md`  

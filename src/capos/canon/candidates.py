@@ -19,17 +19,35 @@ class CandidateAsset(BaseModel):
     file: str | None = None
     checksum: str | None = None
     backend: str | None = None
+    provider: str | None = None
     model: str | None = None
+    model_family: str | None = None
+    model_licence_status: str | None = None
     seed: int | None = None
     prompt_version: str | None = None
+    positive_prompt: str | None = None
+    negative_prompt: str | None = None
     workflow: str | None = None
+    workflow_id: str | None = None
+    workflow_version: str | None = None
     generation_resolution: str | None = None
+    width: int | None = None
+    height: int | None = None
+    steps: int | None = None
+    cfg: float | None = None
+    sampler_name: str | None = None
+    scheduler: str | None = None
+    denoise: float | None = None
     duration_ms: int | None = None
     generated_at: str | None = None
+    original_output_path: str | None = None
     smoke_test: bool = False
     qa_summary: dict[str, Any] = Field(default_factory=dict)
+    provenance: dict[str, Any] = Field(default_factory=dict)
     status: CanonStatus = CanonStatus.CANDIDATE
     non_production: bool = False
+    superseded_by: str | None = None
+    regenerates: str | None = None  # prior candidate_id if same-seed regen
 
 
 class CandidateBatch(BaseModel):

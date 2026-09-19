@@ -13,7 +13,9 @@ from capos.canon.prompts import (
     KITCHEN_EMPTY_PROMPT,
     LIKKLE_JAY_MASTER_PROMPT,
     LIVING_ROOM_EMPTY_PROMPT,
+    PROMPT_COMPILER_VERSION,
     STYLE_MASTER_PROMPT,
+    STYLE_MASTER_SEEDS,
     STYLE_NEGATIVE,
     YARD_EMPTY_PROMPT,
 )
@@ -24,6 +26,7 @@ from capos.core.status import CanonStatus, CanonStep
 from capos.generation.capabilities import capability_matrix, select_production_provider
 from capos.generation.concurrency import generation_slot
 from capos.generation.image_validate import validate_candidate_image
+from capos.generation.model_licence import load_model_provenance
 from capos.generation.registry import _REGISTRY, record_provider_refusal
 from capos.hardware.profile import load_hardware_profile, resolve_generation_settings
 from capos.production.storage import ensure_production_tree, register_production_file
@@ -168,14 +171,24 @@ class CanonCreationPipeline:
         if provider_name == "comfyui":
             import os
 
-            workflow = os.environ.get("CAPOS_COMFYUI_WORKFLOW", "style-master-low-vram.json")
+            workflow = os.environ.get(
+                "CAPOS_COMFYUI_WORKFLOW", "style-master-toonyou-beta6.json"
+            )
+
+        # Deterministic seeds: style master uses permanent slot map; others use 1000+i
+        seed_map: dict[str, int] = {}
+        if step == CanonStep.STYLE_MASTER:
+            for cid in list(STYLE_MASTER_SEEDS.keys())[:count]:
+                seed_map[cid] = STYLE_MASTER_SEEDS[cid]
+        else:
+            for i in range(1, count + 1):
+                seed_map[f"{batch_id}-c{i:03d}"] = 1000 + i
 
         candidates: list[CandidateAsset] = []
         notes: list[str] = []
         base_root = Path(self.root) if self.root else project_root()
-        # Sequential only — never parallel diffusion on LOW_6GB
-        for i in range(1, count + 1):
-            cid = f"{batch_id}-c{i:03d}"
+        prov_model = load_model_provenance(root=self.root)
+        for cid, seed in seed_map.items():
             out = (
                 base_root
                 / "production"
@@ -192,7 +205,7 @@ class CanonCreationPipeline:
                     negative_prompt=negative,
                     width=width,
                     height=height,
-                    seed=1000 + i,
+                    seed=seed,
                     reference_images=refs or None,
                     output_path=out,
                     settings={
@@ -201,8 +214,11 @@ class CanonCreationPipeline:
                         "candidate_id": cid,
                         "batch_id": batch_id,
                         "workflow": workflow,
-                        "steps": hw.get("steps_hint"),
-                        "cfg": hw.get("cfg_hint"),
+                        "steps": hw.get("steps_hint") or 20,
+                        "cfg": hw.get("cfg_hint") or 7.0,
+                        "sampler_name": "euler",
+                        "scheduler": "normal",
+                        "denoise": 1.0,
                     },
                 )
             if result.refusal:
@@ -233,6 +249,32 @@ class CanonCreationPipeline:
             gen_res = result.metadata.get("generation_resolution") or (
                 f"{validation['width']}x{validation['height']}"
             )
+            provenance = {
+                "provider": result.metadata.get("provider") or f"{provider_name}-local",
+                "checkpoint": result.metadata.get("checkpoint") or result.model,
+                "model_family": result.metadata.get("model_family")
+                or prov_model.get("architecture"),
+                "model_licence_status": result.metadata.get("model_licence_status")
+                or prov_model.get("licence_status"),
+                "workflow": result.metadata.get("workflow") or workflow,
+                "workflow_id": result.metadata.get("workflow_id"),
+                "workflow_version": result.metadata.get("workflow_version"),
+                "seed": seed,
+                "positive_prompt": prompt,
+                "negative_prompt": negative,
+                "prompt_compiler_version": PROMPT_COMPILER_VERSION,
+                "width": validation["width"],
+                "height": validation["height"],
+                "steps": result.metadata.get("steps"),
+                "cfg": result.metadata.get("cfg"),
+                "sampler_name": result.metadata.get("sampler_name"),
+                "scheduler": result.metadata.get("scheduler"),
+                "denoise": result.metadata.get("denoise"),
+                "generated_at": utcnow().isoformat(),
+                "duration_ms": result.metadata.get("duration_ms"),
+                "checksum": validation["checksum"],
+                "original_output_path": str(result.output_path),
+            }
             qa = {
                 "FILE_CHECK": "PASS",
                 "DIMENSION_CHECK": "PASS",
@@ -248,17 +290,37 @@ class CanonCreationPipeline:
                     file=meta["file"],
                     checksum=meta["checksum"],
                     backend=provider_name,
+                    provider=str(provenance["provider"]),
                     model=result.model,
-                    seed=result.seed,
-                    prompt_version="style-master-v1"
-                    if step == CanonStep.STYLE_MASTER
-                    else step.value,
-                    workflow=result.metadata.get("workflow") or workflow,
+                    model_family=str(provenance["model_family"])
+                    if provenance["model_family"]
+                    else None,
+                    model_licence_status=str(provenance["model_licence_status"])
+                    if provenance["model_licence_status"]
+                    else None,
+                    seed=seed,
+                    prompt_version=PROMPT_COMPILER_VERSION,
+                    positive_prompt=prompt,
+                    negative_prompt=negative,
+                    workflow=str(provenance["workflow"]) if provenance["workflow"] else None,
+                    workflow_id=provenance.get("workflow_id"),
+                    workflow_version=str(provenance["workflow_version"])
+                    if provenance.get("workflow_version")
+                    else None,
                     generation_resolution=gen_res,
+                    width=validation["width"],
+                    height=validation["height"],
+                    steps=provenance.get("steps"),
+                    cfg=provenance.get("cfg"),
+                    sampler_name=provenance.get("sampler_name"),
+                    scheduler=provenance.get("scheduler"),
+                    denoise=provenance.get("denoise"),
                     duration_ms=result.metadata.get("duration_ms"),
-                    generated_at=utcnow().isoformat(),
+                    generated_at=str(provenance["generated_at"]),
+                    original_output_path=str(result.output_path),
                     smoke_test=False,
                     qa_summary=qa,
+                    provenance=provenance,
                     status=CanonStatus.CANDIDATE,
                     non_production=non_prod,
                 )
@@ -303,6 +365,239 @@ class CanonCreationPipeline:
             category="style",
             slug="style-master",
         )
+
+    def regenerate_style_same_seed(self, candidate_id: str) -> CandidateBatch:
+        """Regenerate one style slot with the same permanent seed; keep prior as history."""
+        if candidate_id not in STYLE_MASTER_SEEDS:
+            raise ValidationError(
+                f"Unknown style candidate slot {candidate_id}",
+                hint=f"Expected one of {list(STYLE_MASTER_SEEDS)}",
+            )
+        seed = STYLE_MASTER_SEEDS[candidate_id]
+        batch = self.batches.get("style-master-batch-001")
+        prior = None
+        if batch:
+            prior = next((c for c in batch.candidates if c.candidate_id == candidate_id), None)
+
+        ok, provider_or_reason = self.can_generate_production()
+        if not ok:
+            raise ValidationError(provider_or_reason)
+        from capos.generation.registry import try_register_optional_backends
+
+        try_register_optional_backends()
+        backend = _REGISTRY[provider_or_reason]()
+        hw = resolve_generation_settings(load_hardware_profile(root=self.root))
+        import os
+
+        workflow = os.environ.get("CAPOS_COMFYUI_WORKFLOW", "style-master-toonyou-beta6.json")
+        stamp = utcnow().strftime("%Y%m%dT%H%M%SZ")
+        new_id = f"{candidate_id}-r{stamp}"
+        base_root = Path(self.root) if self.root else project_root()
+        out = (
+            base_root
+            / "production"
+            / self.series_id
+            / "candidates"
+            / "style"
+            / "style-master"
+            / f"{new_id}.png"
+        )
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with generation_slot(root=self.root):
+            result = backend.generate_image(
+                prompt=STYLE_MASTER_PROMPT,
+                negative_prompt=STYLE_NEGATIVE,
+                width=hw["width"],
+                height=hw["height"],
+                seed=seed,
+                output_path=out,
+                settings={
+                    "candidate_id": new_id,
+                    "workflow": workflow,
+                    "steps": 20,
+                    "cfg": 7.0,
+                    "sampler_name": "euler",
+                    "scheduler": "normal",
+                    "denoise": 1.0,
+                },
+            )
+        if not result.success or not result.output_path:
+            raise ValidationError(result.error or "regeneration failed")
+        validation = validate_candidate_image(Path(result.output_path))
+        if not validation["ok"]:
+            raise ValidationError(str(validation.get("error")))
+        meta = register_production_file(
+            series_id=self.series_id,
+            category="style",
+            asset_slug="style-master",
+            source_path=Path(result.output_path),
+            root=self.root,
+            kind="candidate",
+        )
+        prov_model = load_model_provenance(root=self.root)
+        new_cand = CandidateAsset(
+            candidate_id=new_id,
+            file=meta["file"],
+            checksum=meta["checksum"],
+            backend=provider_or_reason,
+            provider="comfyui-local",
+            model=result.model,
+            model_family=prov_model.get("architecture"),
+            model_licence_status=prov_model.get("licence_status"),
+            seed=seed,
+            prompt_version=PROMPT_COMPILER_VERSION,
+            positive_prompt=STYLE_MASTER_PROMPT,
+            negative_prompt=STYLE_NEGATIVE,
+            workflow=workflow,
+            generation_resolution=f"{validation['width']}x{validation['height']}",
+            width=validation["width"],
+            height=validation["height"],
+            steps=result.metadata.get("steps"),
+            cfg=result.metadata.get("cfg"),
+            sampler_name=result.metadata.get("sampler_name"),
+            scheduler=result.metadata.get("scheduler"),
+            denoise=result.metadata.get("denoise"),
+            duration_ms=result.metadata.get("duration_ms"),
+            generated_at=utcnow().isoformat(),
+            original_output_path=str(result.output_path),
+            regenerates=candidate_id,
+            qa_summary={
+                "FILE_CHECK": "PASS",
+                "DIMENSION_CHECK": "PASS",
+                "CHECKSUM": validation["checksum"],
+                "VISUAL_IDENTITY": "REQUIRES_HUMAN_REVIEW",
+                "images_claimed": True,
+                "regen_mode": "SAME_SEED",
+            },
+            provenance={
+                "regen_mode": "SAME_SEED",
+                "prior_candidate_id": candidate_id,
+                "seed": seed,
+                "checksum": validation["checksum"],
+            },
+            status=CanonStatus.CANDIDATE,
+        )
+        if not batch:
+            batch = CandidateBatch(
+                batch_id="style-master-batch-001",
+                series_id=self.series_id,
+                step=CanonStep.STYLE_MASTER,
+                target_asset_id="style-likkle-jay-v1",
+                status=CanonStatus.AWAITING_HUMAN_SELECTION,
+                candidates=[],
+            )
+        if prior:
+            prior.status = CanonStatus.REJECTED
+            prior.superseded_by = new_id
+        batch.candidates = [c for c in batch.candidates if c.candidate_id != new_id]
+        batch.candidates.append(new_cand)
+        batch.status = CanonStatus.AWAITING_HUMAN_SELECTION
+        batch.recommendation_notes.append(
+            f"SAME_SEED regen: {candidate_id} → {new_id} (seed={seed}); prior kept as REJECTED."
+        )
+        return self.batches.upsert(batch)
+
+    def create_new_style_candidate(self, *, seed: int | None = None) -> CandidateBatch:
+        """Create an additional style candidate with a new seed; never overwrite existing slots."""
+        import secrets
+
+        new_seed = int(seed) if seed is not None else secrets.randbelow(2_147_483_647) + 1
+        stamp = utcnow().strftime("%Y%m%dT%H%M%SZ")
+        cid = f"style-master-candidate-extra-{stamp}"
+        ok, provider_or_reason = self.can_generate_production()
+        if not ok:
+            raise ValidationError(provider_or_reason)
+        from capos.generation.registry import try_register_optional_backends
+
+        try_register_optional_backends()
+        backend = _REGISTRY[provider_or_reason]()
+        hw = resolve_generation_settings(load_hardware_profile(root=self.root))
+        import os
+
+        workflow = os.environ.get("CAPOS_COMFYUI_WORKFLOW", "style-master-toonyou-beta6.json")
+        base_root = Path(self.root) if self.root else project_root()
+        out = (
+            base_root
+            / "production"
+            / self.series_id
+            / "candidates"
+            / "style"
+            / "style-master"
+            / f"{cid}.png"
+        )
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with generation_slot(root=self.root):
+            result = backend.generate_image(
+                prompt=STYLE_MASTER_PROMPT,
+                negative_prompt=STYLE_NEGATIVE,
+                width=hw["width"],
+                height=hw["height"],
+                seed=new_seed,
+                output_path=out,
+                settings={
+                    "candidate_id": cid,
+                    "workflow": workflow,
+                    "steps": 20,
+                    "cfg": 7.0,
+                    "sampler_name": "euler",
+                    "scheduler": "normal",
+                    "denoise": 1.0,
+                },
+            )
+        if not result.success or not result.output_path:
+            raise ValidationError(result.error or "new candidate failed")
+        validation = validate_candidate_image(Path(result.output_path))
+        if not validation["ok"]:
+            raise ValidationError(str(validation.get("error")))
+        meta = register_production_file(
+            series_id=self.series_id,
+            category="style",
+            asset_slug="style-master",
+            source_path=Path(result.output_path),
+            root=self.root,
+            kind="candidate",
+        )
+        batch = self.batches.get("style-master-batch-001") or CandidateBatch(
+            batch_id="style-master-batch-001",
+            series_id=self.series_id,
+            step=CanonStep.STYLE_MASTER,
+            target_asset_id="style-likkle-jay-v1",
+            status=CanonStatus.AWAITING_HUMAN_SELECTION,
+            candidates=[],
+        )
+        batch.candidates.append(
+            CandidateAsset(
+                candidate_id=cid,
+                file=meta["file"],
+                checksum=meta["checksum"],
+                backend=provider_or_reason,
+                provider="comfyui-local",
+                model=result.model,
+                seed=new_seed,
+                prompt_version=PROMPT_COMPILER_VERSION,
+                positive_prompt=STYLE_MASTER_PROMPT,
+                negative_prompt=STYLE_NEGATIVE,
+                workflow=workflow,
+                generation_resolution=f"{validation['width']}x{validation['height']}",
+                width=validation["width"],
+                height=validation["height"],
+                duration_ms=result.metadata.get("duration_ms"),
+                generated_at=utcnow().isoformat(),
+                original_output_path=str(result.output_path),
+                qa_summary={
+                    "FILE_CHECK": "PASS",
+                    "CHECKSUM": validation["checksum"],
+                    "VISUAL_IDENTITY": "REQUIRES_HUMAN_REVIEW",
+                    "images_claimed": True,
+                    "regen_mode": "NEW_SEED",
+                },
+                provenance={"regen_mode": "NEW_SEED", "seed": new_seed},
+                status=CanonStatus.CANDIDATE,
+            )
+        )
+        batch.status = CanonStatus.AWAITING_HUMAN_SELECTION
+        batch.recommendation_notes.append(f"NEW_CANDIDATE {cid} seed={new_seed}")
+        return self.batches.upsert(batch)
 
     def generate_likkle_jay_candidates(self, *, count: int = 3) -> CandidateBatch:
         return self._generate_candidates(
