@@ -1,0 +1,30 @@
+{
+  "model": "toonyou_beta6.safetensors",
+  "model_id": "toonyou_beta6",
+  "display_name": "ToonYou Beta 6",
+  "source": "frankjoshua/toonyou_beta6",
+  "source_urls": [
+    "https://huggingface.co/frankjoshua/toonyou_beta6",
+    "https://civitai.com/models/30240/toonyou"
+  ],
+  "architecture": "SD1.5-class",
+  "family": "Stable Diffusion 1.5 checkpoint (cartoon fine-tune / merge)",
+  "download_note": "Operator places file in ComfyUI models/checkpoints/; CAPOS does not auto-download.",
+  "licence_family_reported": "CreativeML Open RAIL-M (reported on Civitai listing) + author addendum",
+  "licence": "MUST BE VERIFIED AGAINST THE MODEL SOURCE — do not assume Hugging Face mirror implies commercial rights",
+  "author_addendum_summary": "Author terms (Civitai/public notices) state contact for anything other than general personal use; do not use as bait for paid generation services without permission.",
+  "author_contact_public": "ux.arihan@gmail.com (as published on model pages — verify current)",
+  "commercial_use": "REQUIRES_AUTHOR_CONTACT",
+  "commercial_use_operator_ack": false,
+  "licence_status": "UNVERIFIED",
+  "checksum": null,
+  "checksum_note": "Record SHA256 of the local safetensors file when practical",
+  "capos_notes": [
+    "Free download ≠ unrestricted commercial use.",
+    "Set CAPOS_COMFYUI_MODEL_LICENCE_STATUS=VERIFIED only after human reviews source licence text.",
+    "Set commercial_use_operator_ack true in this file only after commercial permission is resolved.",
+    "SEASON_PRODUCTION_READY fails closed while licence_status != VERIFIED or commercial ack missing."
+  ],
+  "recommended_for_low_vram": true,
+  "vram_class": "LOW_6GB"
+}

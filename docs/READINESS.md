@@ -56,7 +56,7 @@ Cloud cannot reach the operator’s `127.0.0.1:8188`. Run activation on the RTX 
 1. Start ComfyUI Desktop API  
 2. Copy `.env.example` → `.env` (never commit) with checkpoint + URL  
 3. Optional: export API workflow — see `docs/COMFYUI_API_WORKFLOW.md`  
-4. Review licence in `config/models/toonyou_beta6.json` (do not assume commercial “free”)  
+4. Review licence in `config/model_provenance/toonyou_beta6.json` (do not assume commercial “free”)  
 5. `python scripts/phase2a_local_activate.py --smoke --style`  
 6. Streamlit → Canon Candidates → SELECT style → stop until human approval  
 

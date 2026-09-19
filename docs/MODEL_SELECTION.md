@@ -76,7 +76,7 @@ Staged generation > stacking everything in one graph.
 | Source | `frankjoshua/toonyou_beta6` (+ Civitai ToonYou listing) |
 | Architecture | SD1.5-class |
 | VRAM class | LOW_6GB — RECOMMENDED |
-| Provenance file | `config/models/toonyou_beta6.json` |
+| Provenance file | `config/model_provenance/toonyou_beta6.json` |
 | Licence status | **UNVERIFIED** until human confirms source terms |
 | Commercial use | **REQUIRES_AUTHOR_CONTACT** per published author addendum (not “FREE”) |
 

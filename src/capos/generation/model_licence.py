@@ -13,7 +13,7 @@ DEFAULT_MODEL_ID = "toonyou_beta6"
 
 
 def models_dir(*, root: Path | None = None) -> Path:
-    return config_dir(root=root or project_root()) / "models"
+    return config_dir(root=root or project_root()) / "model_provenance"
 
 
 def load_model_provenance(
