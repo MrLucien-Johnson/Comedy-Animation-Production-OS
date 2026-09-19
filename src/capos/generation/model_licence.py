@@ -60,7 +60,7 @@ def production_licence_gate(*, root: Path | None = None) -> tuple[bool, str]:
             False,
             (
                 f"MODEL_LICENCE_UNVERIFIED ({prov.get('model')}). "
-                "Record verification in config/models/ and set "
+                "Record verification in config/model_provenance/ and set "
                 "CAPOS_COMFYUI_MODEL_LICENCE_STATUS=VERIFIED only after human review of source terms. "
                 f"commercial_use={prov.get('commercial_use')}"
             ),
