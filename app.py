@@ -10,11 +10,12 @@ import streamlit as st
 from capos import __version__
 from capos.canon.bootstrap import bootstrap_likkle_jay_canon
 from capos.canon.candidates import CandidateStore
-from capos.canon.diff import compare_to_canon
+from capos.canon.diff import compare_to_canon, compare_to_reference
 from capos.canon.pipeline import CanonCreationPipeline
+from capos.canon.style_rejection import reject_phase2a_style_drift
 from capos.core.paths import project_root, series_dir
 from capos.core.schemas import WATERMARK_EXACT
-from capos.core.status import CanonStatus, CanonStep, StageStatus
+from capos.core.status import CanonStatus, CanonStep, StageStatus, VisualReferenceType
 from capos.domain.series import (
     list_series,
     load_episode_brief,
@@ -28,6 +29,7 @@ from capos.generation.provider_status import provider_dashboard_status
 from capos.generation.registry import try_register_optional_backends
 from capos.pipeline.readiness import evaluate_season_production_ready
 from capos.references.golden import GoldenFrameStore
+from capos.references.ingestion import VisualReferenceStore
 from capos.references.versioning import ReferenceStore
 
 st.set_page_config(page_title="CAPOS", layout="wide")
@@ -45,6 +47,7 @@ nav = st.sidebar.radio(
         "Canon",
         "Canon Candidates",
         "Compare to Canon",
+        "Compare to Reference",
         "Characters",
         "Locations",
         "Props",
@@ -163,16 +166,35 @@ elif nav == "Canon":
 elif nav == "Canon Candidates":
     st.subheader("Canon Candidates — human selection required")
     pipe = CanonCreationPipeline(series_id, root=root)
-    st.json(pipe.next_actionable_step())
-    c1, c2, c3 = st.columns(3)
-    if c1.button("Generate STYLE candidates (×3)"):
+    next_step = pipe.next_actionable_step()
+    st.json(next_step)
+    if next_step.get("stop") == "AWAITING_STYLE_REFERENCE_IMPORT":
+        st.warning(
+            "Phase 2B stop: import & approve Likkle Jay style references before recovery generation."
+        )
+        st.code(next_step.get("import_folder") or "")
+        st.info(next_step.get("ui_action") or "")
+    if next_step.get("stop") == "AWAITING_HUMAN_STYLE_RECOVERY_REVIEW":
+        st.success("Style recovery candidates awaiting human review — do not generate characters yet.")
+
+    if st.button("Mark Phase 2A style candidates REJECTED (style drift)"):
+        st.json(reject_phase2a_style_drift(series_id, root=root))
+        st.rerun()
+
+    c1, c2, c3, c4 = st.columns(4)
+    if c1.button("Generate STYLE candidates (×3) [Phase 2A — deprecated]"):
         batch = pipe.generate_style_candidates(count=3)
         st.write(batch.model_dump())
         st.rerun()
-    if c2.button("Generate LIKKLE JAY candidates (×3)"):
+    if c2.button("Generate STYLE RECOVERY (×3) [Phase 2B]"):
+        st.write(pipe.generate_style_recovery_candidates(count=3).model_dump())
+        st.rerun()
+    if c3.button("Generate LIKKLE JAY candidates (×3)"):
+        st.warning("Character production blocked until style recovery approved.")
         st.write(pipe.generate_likkle_jay_candidates(count=3).model_dump())
         st.rerun()
-    if c3.button("Generate AUNTIE BEV candidates (×3)"):
+    if c4.button("Generate AUNTIE BEV candidates (×3)"):
+        st.warning("Character production blocked until style recovery approved.")
         st.write(pipe.generate_auntie_bev_candidates(count=3).model_dump())
         st.rerun()
     loc_cols = st.columns(4)
@@ -185,15 +207,102 @@ elif nav == "Canon Candidates":
         st.rerun()
 
     store_b = CandidateStore(series_id, root=root)
-    for batch in store_b.list_batches():
+    all_batches = store_b.list_batches()
+    rejected_ids = {
+        b.batch_id
+        for b in all_batches
+        if b.status == CanonStatus.HUMAN_REJECTED_STYLE_DRIFT
+        or b.batch_id == "style-master-batch-001"
+    }
+    recovery_ids = {
+        b.batch_id
+        for b in all_batches
+        if b.step == CanonStep.STYLE_RECOVERY
+        or (b.candidates and any(c.batch_kind == "style_recovery" for c in b.candidates))
+    }
+    rejected_batches = [b for b in all_batches if b.batch_id in rejected_ids]
+    recovery_batches = [
+        b for b in all_batches if b.batch_id in recovery_ids and b.batch_id not in rejected_ids
+    ]
+    other_batches = [
+        b
+        for b in all_batches
+        if b.batch_id not in rejected_ids and b.batch_id not in recovery_ids
+    ]
+
+    st.markdown("### Rejected Phase 2A candidates (do not select as canon)")
+    for batch in rejected_batches:
         with st.expander(
             f"{batch.batch_id} · {_status_badge(batch.status)} → {batch.target_asset_id}",
-            expanded=batch.step.value == "STYLE_MASTER" if hasattr(batch.step, "value") else False,
+            expanded=False,
         ):
             if batch.blocker:
                 st.error(batch.blocker)
             st.write(batch.recommendation_notes)
-            # Side-by-side for style candidates
+            cols = st.columns(max(len(batch.candidates) or 1, 1))
+            for idx, cand in enumerate(batch.candidates):
+                with cols[idx % len(cols)]:
+                    st.markdown(f"**{cand.candidate_id}** · `{_status_badge(cand.status)}`")
+                    if cand.file and Path(cand.file).is_file():
+                        st.image(cand.file, use_container_width=True)
+                    st.caption(f"rejection: {cand.rejection_code or cand.rejection_reason}")
+                    st.info("SELECT disabled — HUMAN_REJECTED_STYLE_DRIFT")
+
+    st.markdown("### Reference-grounded style recovery candidates")
+    for batch in recovery_batches:
+        with st.expander(
+            f"{batch.batch_id} · {_status_badge(batch.status)} → {batch.target_asset_id}",
+            expanded=True,
+        ):
+            if batch.blocker:
+                st.error(batch.blocker)
+            st.write(batch.recommendation_notes)
+            active = list(batch.candidates)
+            cols = st.columns(max(len(active), 1))
+            for idx, cand in enumerate(active):
+                col = cols[idx % len(cols)]
+                with col:
+                    st.markdown(f"**{cand.candidate_id}**")
+                    if cand.file and Path(cand.file).is_file():
+                        st.image(cand.file, use_container_width=True)
+                    else:
+                        st.warning("No file")
+                    st.caption(
+                        f"checkpoint: `{cand.model}` · seed: `{cand.seed}` · "
+                        f"denoise: `{cand.denoise}` · {cand.conditioning_method}"
+                    )
+                    st.json(
+                        {
+                            "reference_set_id": cand.reference_set_id,
+                            "reference_ids": cand.reference_ids,
+                            "reference_checksums": cand.reference_checksums,
+                            "qa": cand.qa_summary,
+                            "workflow": cand.workflow,
+                        }
+                    )
+                    if st.button("SELECT", key=f"sel_{batch.batch_id}_{cand.candidate_id}"):
+                        try:
+                            pipe.promote_selection_to_canon(batch.batch_id, cand.candidate_id)
+                            st.success(
+                                f"Selected {cand.candidate_id}. APPROVE on Canon page to lock."
+                            )
+                            st.rerun()
+                        except Exception as exc:
+                            st.error(str(exc))
+                    if st.button("REJECT", key=f"rej_{batch.batch_id}_{cand.candidate_id}"):
+                        cand.status = CanonStatus.REJECTED
+                        store_b.upsert(batch)
+                        st.rerun()
+
+    st.markdown("### Other candidate batches")
+    for batch in other_batches:
+        with st.expander(
+            f"{batch.batch_id} · {_status_badge(batch.status)} → {batch.target_asset_id}",
+            expanded=False,
+        ):
+            if batch.blocker:
+                st.error(batch.blocker)
+            st.write(batch.recommendation_notes)
             active = [c for c in batch.candidates if c.status != CanonStatus.REJECTED]
             if not active:
                 active = list(batch.candidates)
@@ -220,6 +329,11 @@ elif nav == "Canon Candidates":
                     )
                     if cand.smoke_test or cand.non_production:
                         st.warning("NON-PRODUCTION / SMOKE — cannot lock as canon")
+                        continue
+                    if cand.status == CanonStatus.HUMAN_REJECTED_STYLE_DRIFT or cand.qa_summary.get(
+                        "do_not_select_as_canon"
+                    ):
+                        st.info("SELECT disabled — rejected for style drift")
                         continue
                     if st.button("SELECT", key=f"sel_{batch.batch_id}_{cand.candidate_id}"):
                         try:
@@ -248,7 +362,6 @@ elif nav == "Canon Candidates":
                                     "style-master-candidate-002",
                                     "style-master-candidate-003",
                                 }:
-                                    # Map regen ids back to base slot via regenerates chain
                                     slot = cand.candidate_id.split("-r")[0]
                                 st.write(pipe.regenerate_style_same_seed(slot).model_dump())
                                 st.rerun()
@@ -276,6 +389,41 @@ elif nav == "Compare to Canon":
                 root=root,
             )
         )
+
+elif nav == "Compare to Reference":
+    st.subheader("COMPARE TO REFERENCE — style recovery QA")
+    st.caption("Human review is authoritative. No fake semantic identity score.")
+    vstore = VisualReferenceStore(series_id, root=root)
+    sets = vstore.list_sets()
+    set_ids = [s.set_id for s in sets] or ["likkle-jay-style-reference-set-v1"]
+    ref_set = st.selectbox("Style reference set", set_ids)
+    refs = vstore.list_references(reference_type=VisualReferenceType.STYLE_REFERENCE)
+    ref_ids = ["(entire set)"] + [r.reference_id for r in refs]
+    pick = st.selectbox("Single reference (optional)", ref_ids)
+    cand_path = st.text_input("Recovery candidate image path")
+    if cand_path and Path(cand_path).is_file():
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**REFERENCE(S)**")
+            show_refs = refs if pick == "(entire set)" else [r for r in refs if r.reference_id == pick]
+            for r in show_refs:
+                if Path(r.file).is_file():
+                    st.image(r.file, caption=f"{r.reference_id} · {r.checksum[:12]}…")
+        with c2:
+            st.markdown("**GENERATED CANDIDATE**")
+            st.image(cand_path)
+    if st.button("Run compare to reference"):
+        report = compare_to_reference(
+            series_id=series_id,
+            candidate_file=cand_path or None,
+            reference_id=None if pick == "(entire set)" else pick,
+            reference_set_id=ref_set if pick == "(entire set)" else None,
+            root=root,
+        )
+        st.json(report)
+        st.markdown("**Human review categories**")
+        for cat in report.get("human_review_categories") or []:
+            st.checkbox(cat, key=f"hr_{cat}", value=False)
 
 elif nav == "Characters":
     st.subheader("Characters")
@@ -322,6 +470,98 @@ elif nav == "Storyboard":
     st.json([b.model_dump() for b in load_storyboard(series_id, ep, root=root)])
 
 elif nav == "References":
+    st.subheader("Visual references — import established artwork")
+    vstore = VisualReferenceStore(series_id, root=root)
+    gate = vstore.style_recovery_gate()
+    st.json(gate)
+    st.markdown("### Import Visual Reference")
+    ref_type = st.selectbox(
+        "Reference type",
+        [t.value for t in VisualReferenceType],
+        index=0,
+    )
+    notes = st.text_input("Notes / provenance", "")
+    upload = st.file_uploader(
+        "Import image (PNG / JPG / WEBP)",
+        type=["png", "jpg", "jpeg", "webp"],
+        key="vis_ref_upload",
+    )
+    custom_id = st.text_input("Optional reference ID", "")
+    if upload is not None and st.button("IMPORT REFERENCE"):
+        dest = (
+            series_dir(series_id, root=root)
+            / "visual_references"
+            / "_staging"
+            / upload.name
+        )
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(upload.getvalue())
+        try:
+            ref = vstore.import_reference(
+                dest,
+                reference_type=VisualReferenceType(ref_type),
+                reference_id=custom_id or None,
+                notes=notes,
+                source="streamlit_import",
+            )
+            st.success(f"Imported {ref.reference_id} · checksum {ref.checksum[:16]}…")
+            st.rerun()
+        except Exception as exc:
+            st.error(str(exc))
+
+    st.markdown("### Imported references")
+    for ref in vstore.list_references():
+        with st.expander(f"{ref.reference_id} · {_status_badge(ref.status)} · {ref.reference_type.value}"):
+            cols = st.columns([1, 2])
+            if Path(ref.file).is_file():
+                cols[0].image(ref.file, use_container_width=True)
+            cols[1].json(
+                {
+                    "checksum": ref.checksum,
+                    "dimensions": f"{ref.width}x{ref.height}",
+                    "imported_at": ref.imported_at,
+                    "source": ref.source,
+                    "notes": ref.notes,
+                    "provenance": ref.provenance,
+                    "file": ref.file,
+                }
+            )
+            if ref.status != CanonStatus.APPROVED and st.button(
+                "APPROVE REFERENCE", key=f"aref_{ref.reference_id}"
+            ):
+                vstore.approve_reference(ref.reference_id)
+                st.rerun()
+
+    st.markdown("### Style reference sets")
+    approved_ids = [
+        r.reference_id
+        for r in vstore.list_references(reference_type=VisualReferenceType.STYLE_REFERENCE)
+        if r.status == CanonStatus.APPROVED
+    ]
+    set_id = st.text_input("Set ID", "likkle-jay-style-reference-set-v1")
+    chosen = st.multiselect("Members (prefer 3–8 approved STYLE_REFERENCE)", approved_ids)
+    set_notes = st.text_input("Set notes", "Curated Likkle Jay established style references")
+    if st.button("CREATE / UPDATE REFERENCE SET") and chosen:
+        try:
+            s = vstore.create_or_update_set(set_id, chosen, notes=set_notes)
+            st.success(f"Set {s.set_id} · {len(s.reference_ids)} refs · {_status_badge(s.status)}")
+            st.rerun()
+        except Exception as exc:
+            st.error(str(exc))
+    for s in vstore.list_sets():
+        with st.expander(f"{s.set_id} · {_status_badge(s.status)} · {len(s.reference_ids)} refs"):
+            st.write(s.reference_ids)
+            st.write(s.notes)
+            if s.status != CanonStatus.APPROVED and st.button(
+                "APPROVE REFERENCE SET", key=f"aset_{s.set_id}"
+            ):
+                try:
+                    vstore.approve_set(s.set_id)
+                    st.rerun()
+                except Exception as exc:
+                    st.error(str(exc))
+
+    st.markdown("### Canonical production registry (legacy list)")
     store = ReferenceStore(series_id, root=root)
     for a in store.list_assets():
         st.write(f"`{a.asset_id}` — {_status_badge(a.status)} — path={a.effective_path}")

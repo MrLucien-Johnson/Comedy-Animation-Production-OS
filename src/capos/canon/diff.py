@@ -6,15 +6,31 @@ from pathlib import Path
 from typing import Any
 
 from capos.core.schemas import CanonicalAssetRef
-from capos.core.status import QAResultStatus
+from capos.core.status import CanonStatus, QAResultStatus, VisualReferenceType
 from capos.qa.visual import (
     average_hash,
     palette_check,
     perceptual_similarity_check,
 )
+from capos.references.ingestion import VisualReferenceStore
 from capos.references.versioning import ReferenceStore
 from capos.scale.system import load_scale
 from capos.spatial.layout import load_location_space
+
+
+HUMAN_STYLE_REVIEW_CATEGORIES = (
+    "LINEWORK_MATCH",
+    "SHAPE_LANGUAGE_MATCH",
+    "COLOUR_LANGUAGE_MATCH",
+    "SHADING_MATCH",
+    "FACE_STYLE_MATCH",
+    "BACKGROUND_STYLE_MATCH",
+    "COMEDY_EXPRESSIVENESS",
+    "ANIME_DRIFT",
+    "PHOTOREALISM_DRIFT",
+    "OVER_DETAILING",
+    "OVERALL_CONTINUITY",
+)
 
 
 def compare_to_canon(
@@ -88,4 +104,73 @@ def compare_to_canon(
 
     result["identity_claim"] = False
     result["review_required"] = True
+    return result
+
+
+def compare_to_reference(
+    *,
+    series_id: str,
+    candidate_file: str | Path | None,
+    reference_id: str | None = None,
+    reference_set_id: str | None = None,
+    root: Path | None = None,
+) -> dict[str, Any]:
+    """Side-by-side style recovery compare — human review authoritative; no fake identity score."""
+    vstore = VisualReferenceStore(series_id, root=root)
+    references: list[dict[str, Any]] = []
+    if reference_id:
+        ref = vstore.get(reference_id)
+        if ref:
+            references.append(ref.model_dump(mode="json"))
+    elif reference_set_id:
+        s = vstore.get_set(reference_set_id)
+        if s:
+            for rid in s.reference_ids:
+                ref = vstore.get(rid)
+                if ref:
+                    references.append(ref.model_dump(mode="json"))
+    else:
+        for ref in vstore.list_references(reference_type=VisualReferenceType.STYLE_REFERENCE):
+            if ref.status == CanonStatus.APPROVED:
+                references.append(ref.model_dump(mode="json"))
+
+    result: dict[str, Any] = {
+        "candidate_file": str(candidate_file) if candidate_file else None,
+        "reference_id": reference_id,
+        "reference_set_id": reference_set_id,
+        "references": references,
+        "comparisons": [],
+        "human_review_categories": list(HUMAN_STYLE_REVIEW_CATEGORIES),
+        "identity_claim": False,
+        "semantic_identity_score": None,
+        "review_required": True,
+        "note": "Human review is authoritative — no automatic style pass/fail.",
+    }
+    if not candidate_file or not Path(candidate_file).is_file():
+        result["error"] = "Candidate file missing"
+        return result
+
+    for ref in references:
+        rpath = ref.get("file")
+        entry: dict[str, Any] = {
+            "reference_id": ref.get("reference_id"),
+            "reference_file": rpath,
+            "checksum": ref.get("checksum"),
+            "image_similarity": None,
+            "palette": None,
+        }
+        if rpath and Path(rpath).is_file():
+            sim = perceptual_similarity_check(Path(candidate_file), Path(rpath))
+            entry["image_similarity"] = {
+                "status": sim.status.value,
+                "message": sim.message,
+                "details": sim.details,
+            }
+            pal = palette_check(Path(candidate_file), Path(rpath))
+            entry["palette"] = {
+                "status": pal.status.value,
+                "message": pal.message,
+                "details": pal.details,
+            }
+        result["comparisons"].append(entry)
     return result

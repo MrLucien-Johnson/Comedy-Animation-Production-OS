@@ -28,7 +28,47 @@ STYLE_MASTER_SEEDS: dict[str, int] = {
     "style-master-candidate-003": 305033,
 }
 
+# Style recovery — reference-grounded img2img; fixed seeds; do not invent style from text alone
+STYLE_RECOVERY_SEEDS: dict[str, int] = {
+    "style-recovery-candidate-001": 405011,
+    "style-recovery-candidate-002": 405022,
+    "style-recovery-candidate-003": 405033,
+}
+
+# Conservative denoise band for style retention while allowing composition change
+STYLE_RECOVERY_DENOISE: dict[str, float] = {
+    "style-recovery-candidate-001": 0.35,
+    "style-recovery-candidate-002": 0.45,
+    "style-recovery-candidate-003": 0.55,
+}
+
+STYLE_RECOVERY_PROMPT = """
+Recover the established Likkle Jay visual language from the supplied style reference.
+Warm-toned 2D cartoon/comic, bold dark outlines, rounded shape language,
+flat/simple cel shading, slightly textured warm vintage finish,
+expressive comedy faces, large readable eyes, rounded youthful construction,
+simple but readable backgrounds, strong silhouettes, animation-friendly forms,
+consistent line weight, warm Caribbean/Jamaican-inspired domestic atmosphere,
+family comedy visual language.
+NEW neutral composition — do NOT copy the reference frame pose or exact layout.
+Change pose and/or environment arrangement while retaining line style, shape language,
+shading, palette, and visual proportions.
+Square 1:1. Fictional animated cartoon only.
+No text, letters, logos, watermarks, speech bubbles, or titles.
+""".strip()
+
+STYLE_RECOVERY_NEGATIVE = """
+anime, manga, photorealistic, photography, live action, 3d render, cgi,
+semi-realistic concept art, cinematic fantasy illustration, hyper-detailed painting,
+sharp angular anime faces, fashion-model proportions, elongated limbs,
+dramatic stylised hair, spiky hair, fade haircut, tapered hair, slick hair,
+excessive environmental detail, complex volumetric lighting,
+text, letters, watermark, logo, signature, speech bubble, subtitle, title text,
+NSFW, gore, celebrity likeness
+""".strip()
+
 PROMPT_COMPILER_VERSION = "capos-style-master-v2"
+STYLE_RECOVERY_PROMPT_VERSION = "capos-style-recovery-v1"
 
 LIKKLE_JAY_MASTER_PROMPT = """
 Fictional male cartoon character MASTER reference. Young character design.
