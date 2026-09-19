@@ -48,6 +48,14 @@ class CandidateAsset(BaseModel):
     non_production: bool = False
     superseded_by: str | None = None
     regenerates: str | None = None  # prior candidate_id if same-seed regen
+    rejection_reason: str | None = None
+    rejection_code: str | None = None
+    batch_kind: str | None = None  # e.g. phase2a_style | style_recovery
+    conditioning_method: str | None = None
+    conditioning_strength: float | None = None
+    reference_set_id: str | None = None
+    reference_ids: list[str] = Field(default_factory=list)
+    reference_checksums: list[str] = Field(default_factory=list)
 
 
 class CandidateBatch(BaseModel):
@@ -105,7 +113,12 @@ class CandidateStore:
         return [
             b
             for b in self.list_batches()
-            if b.status == CanonStatus.AWAITING_HUMAN_SELECTION and b.candidates
+            if b.status
+            in {
+                CanonStatus.AWAITING_HUMAN_SELECTION,
+                CanonStatus.AWAITING_HUMAN_STYLE_RECOVERY_REVIEW,
+            }
+            and b.candidates
         ]
 
     def select_candidate(self, batch_id: str, candidate_id: str) -> CandidateBatch:
@@ -122,6 +135,20 @@ class CandidateStore:
             raise ValidationError(
                 "Cannot select non-production (mock) art as visual canon",
                 hint="Generate with a real provider or import a real image.",
+            )
+        if chosen.status == CanonStatus.HUMAN_REJECTED_STYLE_DRIFT:
+            raise ValidationError(
+                "Cannot select HUMAN_REJECTED_STYLE_DRIFT candidate as canon",
+                hint="Use reference-grounded style recovery candidates instead.",
+            )
+        if chosen.qa_summary.get("do_not_select_as_canon"):
+            raise ValidationError(
+                "Candidate marked do_not_select_as_canon",
+                hint=chosen.rejection_code or chosen.rejection_reason or "Rejected by policy",
+            )
+        if chosen.rejection_code == "NOT_CLOSE_ENOUGH_TO_ESTABLISHED_LIKKLE_JAY_STYLE":
+            raise ValidationError(
+                "Phase 2A style-drift reject — never promote to canon",
             )
         batch.selected_candidate_id = candidate_id
         batch.status = CanonStatus.REVIEW_REQUIRED

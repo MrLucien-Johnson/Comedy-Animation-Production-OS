@@ -17,6 +17,11 @@ from capos.canon.prompts import (
     STYLE_MASTER_PROMPT,
     STYLE_MASTER_SEEDS,
     STYLE_NEGATIVE,
+    STYLE_RECOVERY_DENOISE,
+    STYLE_RECOVERY_NEGATIVE,
+    STYLE_RECOVERY_PROMPT,
+    STYLE_RECOVERY_PROMPT_VERSION,
+    STYLE_RECOVERY_SEEDS,
     YARD_EMPTY_PROMPT,
 )
 from capos.core.errors import ValidationError
@@ -34,6 +39,7 @@ from capos.references.versioning import ReferenceStore
 
 CANON_DEPENDENCIES: dict[CanonStep, list[str]] = {
     CanonStep.STYLE_MASTER: [],
+    CanonStep.STYLE_RECOVERY: [],  # gated by VisualReferenceStore, not style-likkle-jay-v1
     CanonStep.LIKKLE_JAY_MASTER: ["style-likkle-jay-v1"],
     CanonStep.AUNTIE_BEV_MASTER: ["style-likkle-jay-v1"],
     CanonStep.CHARACTER_TURNAROUNDS: ["character-likkle-jay-v1", "character-auntie-bev-v1"],
@@ -366,6 +372,312 @@ class CanonCreationPipeline:
             slug="style-master",
         )
 
+    def generate_style_recovery_candidates(
+        self,
+        *,
+        count: int = 3,
+        set_id: str = "likkle-jay-style-reference-set-v1",
+    ) -> CandidateBatch:
+        """Reference-grounded style recovery via img2img. Exactly 3 candidates when count=3.
+
+        Requires approved style reference set. Does NOT generate character masters.
+        """
+        from capos.references.ingestion import VisualReferenceStore
+
+        batch_id = "style-recovery-batch-001"
+        vstore = VisualReferenceStore(self.series_id, root=self.root)
+        gate = vstore.style_recovery_gate()
+        if not gate["ready"]:
+            batch = CandidateBatch(
+                batch_id=batch_id,
+                series_id=self.series_id,
+                step=CanonStep.STYLE_RECOVERY,
+                target_asset_id="style-likkle-jay-v1",
+                status=CanonStatus.AWAITING_STYLE_REFERENCE_IMPORT,
+                blocker=gate.get("stop") or "AWAITING_STYLE_REFERENCE_IMPORT",
+                recommendation_notes=[
+                    f"Import folder: {gate.get('import_folder')}",
+                    str(gate.get("ui_action") or ""),
+                    f"Preferred set: {gate.get('preferred_set_id')}",
+                    "Approve 3–8 STYLE_REFERENCE images, create set, approve set, then regenerate.",
+                ],
+            )
+            return self.batches.upsert(batch)
+
+        ref_set = vstore.get_set(set_id)
+        if not ref_set or ref_set.status != CanonStatus.APPROVED:
+            approved = gate.get("approved_sets") or []
+            if approved:
+                set_id = approved[0]
+                ref_set = vstore.get_set(set_id)
+            if not ref_set or ref_set.status != CanonStatus.APPROVED:
+                batch = CandidateBatch(
+                    batch_id=batch_id,
+                    series_id=self.series_id,
+                    step=CanonStep.STYLE_RECOVERY,
+                    target_asset_id="style-likkle-jay-v1",
+                    status=CanonStatus.AWAITING_STYLE_REFERENCE_IMPORT,
+                    blocker=f"Style reference set not approved: {set_id}",
+                )
+                return self.batches.upsert(batch)
+
+        refs = []
+        for rid in ref_set.reference_ids:
+            ref = vstore.get(rid)
+            if ref and Path(ref.file).is_file():
+                refs.append(ref)
+        if not refs:
+            batch = CandidateBatch(
+                batch_id=batch_id,
+                series_id=self.series_id,
+                step=CanonStep.STYLE_RECOVERY,
+                target_asset_id="style-likkle-jay-v1",
+                status=CanonStatus.AWAITING_STYLE_REFERENCE_IMPORT,
+                blocker="Approved set has no readable reference files",
+            )
+            return self.batches.upsert(batch)
+
+        ok, provider_or_reason = self.can_generate_production()
+        if not ok:
+            batch = CandidateBatch(
+                batch_id=batch_id,
+                series_id=self.series_id,
+                step=CanonStep.STYLE_RECOVERY,
+                target_asset_id="style-likkle-jay-v1",
+                status=CanonStatus.BLOCKED_NO_PROVIDER,
+                blocker=provider_or_reason,
+                recommendation_notes=[
+                    "Configure CAPOS_COMFYUI_URL + CAPOS_COMFYUI_CHECKPOINT for img2img recovery.",
+                ],
+            )
+            return self.batches.upsert(batch)
+
+        from capos.generation.registry import try_register_optional_backends
+
+        try_register_optional_backends()
+        if provider_or_reason not in _REGISTRY:
+            batch = CandidateBatch(
+                batch_id=batch_id,
+                series_id=self.series_id,
+                step=CanonStep.STYLE_RECOVERY,
+                target_asset_id="style-likkle-jay-v1",
+                status=CanonStatus.BLOCKED_NO_PROVIDER,
+                blocker=f"Provider '{provider_or_reason}' not registered",
+            )
+            return self.batches.upsert(batch)
+
+        backend = _REGISTRY[provider_or_reason]()
+        if not backend.supports_edit():
+            batch = CandidateBatch(
+                batch_id=batch_id,
+                series_id=self.series_id,
+                step=CanonStep.STYLE_RECOVERY,
+                target_asset_id="style-likkle-jay-v1",
+                status=CanonStatus.BLOCKED_NO_PROVIDER,
+                blocker=f"Provider '{provider_or_reason}' does not support IMAGE_TO_IMAGE",
+            )
+            return self.batches.upsert(batch)
+
+        hw = resolve_generation_settings(load_hardware_profile(root=self.root))
+        width = int(hw["width"])
+        height = int(hw["height"])
+        workflow = "style-recovery-img2img-low-vram.json"
+        seed_map = dict(list(STYLE_RECOVERY_SEEDS.items())[:count])
+        candidates: list[CandidateAsset] = []
+        notes: list[str] = [
+            f"Reference set: {set_id}",
+            f"Conditioning: IMAGE_TO_IMAGE (denoise band {min(STYLE_RECOVERY_DENOISE.values())}"
+            f"–{max(STYLE_RECOVERY_DENOISE.values())})",
+            "Do not copy reference frames — generalise style only.",
+            "Character production BLOCKED until style recovery approved.",
+        ]
+        base_root = Path(self.root) if self.root else project_root()
+        prov_model = load_model_provenance(root=self.root)
+
+        for idx, (cid, seed) in enumerate(seed_map.items()):
+            ref = refs[idx % len(refs)]
+            denoise = STYLE_RECOVERY_DENOISE.get(cid, 0.45)
+            out = (
+                base_root
+                / "production"
+                / self.series_id
+                / "candidates"
+                / "style"
+                / "style-recovery"
+                / f"{cid}.png"
+            )
+            out.parent.mkdir(parents=True, exist_ok=True)
+            with generation_slot(root=self.root):
+                result = backend.edit_image(
+                    source_image=ref.file,
+                    prompt=STYLE_RECOVERY_PROMPT,
+                    negative_prompt=STYLE_RECOVERY_NEGATIVE,
+                    output_path=out,
+                    settings={
+                        "seed": seed,
+                        "workflow": workflow,
+                        "steps": hw.get("steps_hint") or 20,
+                        "cfg": hw.get("cfg_hint") or 7.0,
+                        "sampler_name": "euler",
+                        "scheduler": "normal",
+                        "denoise": denoise,
+                        "force_width": width,
+                        "force_height": height,
+                        "candidate_id": cid,
+                        "batch_id": batch_id,
+                        "capos_canon_step": CanonStep.STYLE_RECOVERY.value,
+                    },
+                )
+            if result.refusal:
+                record_provider_refusal(
+                    backend=provider_or_reason,
+                    prompt=STYLE_RECOVERY_PROMPT,
+                    refusal=result.refusal,
+                )
+                notes.append(f"{cid}: PROVIDER_REFUSED — {result.refusal}")
+                continue
+            if (
+                not result.success
+                or not result.output_path
+                or not Path(result.output_path).is_file()
+            ):
+                notes.append(f"{cid}: generation failed — {result.error}")
+                continue
+            validation = validate_candidate_image(Path(result.output_path), require_square=True)
+            if not validation["ok"]:
+                notes.append(f"{cid}: image validation failed — {validation.get('error')}")
+                continue
+            meta = register_production_file(
+                series_id=self.series_id,
+                category="style",
+                asset_slug="style-recovery",
+                source_path=Path(result.output_path),
+                root=self.root,
+                kind="candidate",
+            )
+            gen_res = result.metadata.get("generation_resolution") or (
+                f"{validation['width']}x{validation['height']}"
+            )
+            provenance = {
+                "provider": result.metadata.get("provider") or f"{provider_or_reason}-local",
+                "checkpoint": result.metadata.get("checkpoint") or result.model,
+                "model_family": result.metadata.get("model_family")
+                or prov_model.get("architecture"),
+                "model_licence_status": result.metadata.get("model_licence_status")
+                or prov_model.get("licence_status"),
+                "workflow": result.metadata.get("workflow") or workflow,
+                "workflow_id": result.metadata.get("workflow_id"),
+                "workflow_version": result.metadata.get("workflow_version"),
+                "seed": seed,
+                "positive_prompt": STYLE_RECOVERY_PROMPT,
+                "negative_prompt": STYLE_RECOVERY_NEGATIVE,
+                "prompt_compiler_version": STYLE_RECOVERY_PROMPT_VERSION,
+                "conditioning_method": "IMAGE_TO_IMAGE",
+                "conditioning_strength": denoise,
+                "denoise": denoise,
+                "reference_set_id": set_id,
+                "reference_ids": [ref.reference_id],
+                "reference_checksums": [ref.checksum],
+                "width": validation["width"],
+                "height": validation["height"],
+                "steps": result.metadata.get("steps"),
+                "cfg": result.metadata.get("cfg"),
+                "sampler_name": result.metadata.get("sampler_name"),
+                "scheduler": result.metadata.get("scheduler"),
+                "generated_at": utcnow().isoformat(),
+                "duration_ms": result.metadata.get("duration_ms"),
+                "checksum": validation["checksum"],
+                "original_output_path": str(result.output_path),
+            }
+            qa = {
+                "FILE_CHECK": "PASS",
+                "DIMENSION_CHECK": "PASS",
+                "SQUARE_CHECK": "PASS" if validation["square"] else "FAIL",
+                "CHECKSUM": validation["checksum"],
+                "VISUAL_IDENTITY": "REQUIRES_HUMAN_REVIEW",
+                "STYLE_RECOVERY": "REQUIRES_HUMAN_REVIEW",
+                "identity_claim": False,
+                "images_claimed": True,
+                "human_review_categories": [
+                    "LINEWORK_MATCH",
+                    "SHAPE_LANGUAGE_MATCH",
+                    "COLOUR_LANGUAGE_MATCH",
+                    "SHADING_MATCH",
+                    "FACE_STYLE_MATCH",
+                    "BACKGROUND_STYLE_MATCH",
+                    "COMEDY_EXPRESSIVENESS",
+                    "ANIME_DRIFT",
+                    "PHOTOREALISM_DRIFT",
+                    "OVER_DETAILING",
+                    "OVERALL_CONTINUITY",
+                ],
+            }
+            candidates.append(
+                CandidateAsset(
+                    candidate_id=cid,
+                    file=meta["file"],
+                    checksum=meta["checksum"],
+                    backend=provider_or_reason,
+                    provider=str(provenance["provider"]),
+                    model=result.model,
+                    model_family=str(provenance["model_family"])
+                    if provenance["model_family"]
+                    else None,
+                    model_licence_status=str(provenance["model_licence_status"])
+                    if provenance["model_licence_status"]
+                    else None,
+                    seed=seed,
+                    prompt_version=STYLE_RECOVERY_PROMPT_VERSION,
+                    positive_prompt=STYLE_RECOVERY_PROMPT,
+                    negative_prompt=STYLE_RECOVERY_NEGATIVE,
+                    workflow=str(provenance["workflow"]),
+                    workflow_id=provenance.get("workflow_id"),
+                    workflow_version=str(provenance["workflow_version"])
+                    if provenance.get("workflow_version")
+                    else None,
+                    generation_resolution=gen_res,
+                    width=validation["width"],
+                    height=validation["height"],
+                    steps=provenance.get("steps"),
+                    cfg=provenance.get("cfg"),
+                    sampler_name=provenance.get("sampler_name"),
+                    scheduler=provenance.get("scheduler"),
+                    denoise=denoise,
+                    duration_ms=result.metadata.get("duration_ms"),
+                    generated_at=str(provenance["generated_at"]),
+                    original_output_path=str(result.output_path),
+                    smoke_test=False,
+                    qa_summary=qa,
+                    provenance=provenance,
+                    status=CanonStatus.CANDIDATE,
+                    non_production=False,
+                    batch_kind="style_recovery",
+                    conditioning_method="IMAGE_TO_IMAGE",
+                    conditioning_strength=denoise,
+                    reference_set_id=set_id,
+                    reference_ids=[ref.reference_id],
+                    reference_checksums=[ref.checksum],
+                )
+            )
+
+        status = (
+            CanonStatus.AWAITING_HUMAN_STYLE_RECOVERY_REVIEW
+            if candidates
+            else CanonStatus.BLOCKED_NO_PROVIDER
+        )
+        batch = CandidateBatch(
+            batch_id=batch_id,
+            series_id=self.series_id,
+            step=CanonStep.STYLE_RECOVERY,
+            target_asset_id="style-likkle-jay-v1",
+            parent_asset_ids=[],
+            status=status,
+            candidates=candidates,
+            recommendation_notes=notes,
+            blocker=None if candidates else "No successful style recovery outputs",
+        )
+        return self.batches.upsert(batch)
+
     def regenerate_style_same_seed(self, candidate_id: str) -> CandidateBatch:
         """Regenerate one style slot with the same permanent seed; keep prior as history."""
         if candidate_id not in STYLE_MASTER_SEEDS:
@@ -682,7 +994,47 @@ class CanonCreationPipeline:
 
     def next_actionable_step(self) -> dict[str, Any]:
         """Report which step can proceed and what is awaiting human selection."""
+        from capos.references.ingestion import VisualReferenceStore
+
         awaiting = self.batches.awaiting_human()
+        recovery = self.batches.get("style-recovery-batch-001")
+        if recovery and recovery.status == CanonStatus.AWAITING_HUMAN_STYLE_RECOVERY_REVIEW:
+            return {
+                "step": CanonStep.STYLE_RECOVERY.value,
+                "status": recovery.status.value,
+                "stop": "AWAITING_HUMAN_STYLE_RECOVERY_REVIEW",
+                "batch_id": recovery.batch_id,
+                "candidate_count": len(recovery.candidates),
+                "note": "Human must review style recovery candidates before character production.",
+            }
+
+        # Style not locked → prefer recovery path over text-only invention
+        if not _approved_with_file(self.store, "style-likkle-jay-v1"):
+            gate = VisualReferenceStore(self.series_id, root=self.root).style_recovery_gate()
+            phase2a = self.batches.get("style-master-batch-001")
+            phase2a_rejected = bool(
+                phase2a and phase2a.status == CanonStatus.HUMAN_REJECTED_STYLE_DRIFT
+            )
+            if not gate["ready"]:
+                return {
+                    "step": CanonStep.STYLE_RECOVERY.value,
+                    "status": CanonStatus.AWAITING_STYLE_REFERENCE_IMPORT.value,
+                    "stop": "AWAITING_STYLE_REFERENCE_IMPORT",
+                    "phase2a_rejected": phase2a_rejected,
+                    "import_folder": gate.get("import_folder"),
+                    "ui_action": gate.get("ui_action"),
+                    "preferred_set_id": gate.get("preferred_set_id"),
+                    "provider_ok": self.can_generate_production()[0],
+                }
+            return {
+                "step": CanonStep.STYLE_RECOVERY.value,
+                "status": "READY_FOR_RECOVERY_GENERATION",
+                "stop": None,
+                "approved_sets": gate.get("approved_sets"),
+                "provider_ok": self.can_generate_production()[0],
+                "note": "Run generate_style_recovery_candidates (×3) then human review.",
+            }
+
         for step in (
             CanonStep.STYLE_MASTER,
             CanonStep.LIKKLE_JAY_MASTER,
@@ -697,8 +1049,6 @@ class CanonCreationPipeline:
             ok, provider = self.can_generate_production()
             if missing:
                 continue
-            # If target already approved, skip
-            # Find primary target for step
             targets = {
                 CanonStep.STYLE_MASTER: ["style-likkle-jay-v1"],
                 CanonStep.LIKKLE_JAY_MASTER: ["character-likkle-jay-v1"],

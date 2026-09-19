@@ -1,0 +1,72 @@
+{
+  "workflow_id": "style-recovery-img2img-low-vram-v1",
+  "workflow_version": "1",
+  "template_only": false,
+  "requires_local_checkpoint": true,
+  "conditioning_method": "IMAGE_TO_IMAGE",
+  "vram_class": "LOW_6GB",
+  "intended_resolution": [512, 512],
+  "default_checkpoint": "toonyou_beta6.safetensors",
+  "default_settings": {
+    "steps": 20,
+    "cfg": 7.0,
+    "sampler_name": "euler",
+    "scheduler": "normal",
+    "denoise": 0.45,
+    "batch_size": 1
+  },
+  "description": "Low-VRAM style recovery via SD1.5 img2img. CAPOS uploads the reference, injects denoise < 1.0. Prefer denoise 0.35–0.55 to retain line/palette while changing composition.",
+  "prompt": {
+    "1": {
+      "class_type": "CheckpointLoaderSimple",
+      "inputs": {"ckpt_name": "toonyou_beta6.safetensors"},
+      "_meta": {"capos_role": "checkpoint", "title": "Load Checkpoint"}
+    },
+    "2": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {"text": "POSITIVE", "clip": ["1", 1]},
+      "_meta": {"capos_role": "positive", "title": "Positive"}
+    },
+    "3": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {"text": "NEGATIVE", "clip": ["1", 1]},
+      "_meta": {"capos_role": "negative", "title": "Negative"}
+    },
+    "8": {
+      "class_type": "LoadImage",
+      "inputs": {"image": "capos_reference.png"},
+      "_meta": {"capos_role": "load_image", "title": "Reference Image"}
+    },
+    "9": {
+      "class_type": "VAEEncode",
+      "inputs": {"pixels": ["8", 0], "vae": ["1", 2]},
+      "_meta": {"capos_role": "vae_encode", "title": "VAE Encode"}
+    },
+    "5": {
+      "class_type": "KSampler",
+      "inputs": {
+        "seed": 0,
+        "steps": 20,
+        "cfg": 7.0,
+        "sampler_name": "euler",
+        "scheduler": "normal",
+        "denoise": 0.45,
+        "model": ["1", 0],
+        "positive": ["2", 0],
+        "negative": ["3", 0],
+        "latent_image": ["9", 0]
+      },
+      "_meta": {"capos_role": "sampler", "title": "Sampler"}
+    },
+    "6": {
+      "class_type": "VAEDecode",
+      "inputs": {"samples": ["5", 0], "vae": ["1", 2]},
+      "_meta": {"title": "VAE Decode"}
+    },
+    "7": {
+      "class_type": "SaveImage",
+      "inputs": {"filename_prefix": "capos_style_recovery", "images": ["6", 0]},
+      "_meta": {"capos_role": "output", "title": "Save"}
+    }
+  }
+}

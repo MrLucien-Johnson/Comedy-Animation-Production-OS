@@ -92,4 +92,16 @@ and update `commercial_use_operator_ack` in the provenance JSON when commercial 
 
 `SEASON_PRODUCTION_READY` **fails closed** while licence is unverified / commercial ack missing.
 
+### Phase 2B — model is not sacred
+
+ToonYou proved **provider/infrastructure** success on RTX 3050. That does **not** lock it as the artistic production checkpoint.
+
+If reference-conditioned ToonYou cannot recover the established Likkle Jay visual language:
+
+1. Mark `MODEL_STYLE_MISMATCH`
+2. Evaluate another **SD1.5-compatible** low-VRAM cartoon checkpoint
+3. Keep `PROVIDER=ComfyUI` with replaceable `CAPOS_COMFYUI_CHECKPOINT`
+
+Do **not** move to FLUX/large models or raise resolution to “fix” style drift. See `docs/PHASE2B_STYLE_RECOVERY.md`.
+
 ## Capability needs for Likkle Jay

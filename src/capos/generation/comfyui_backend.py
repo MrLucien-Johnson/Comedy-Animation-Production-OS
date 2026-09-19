@@ -291,3 +291,213 @@ class ComfyUIBackend(GenerationBackend):
                 "checkpoint": checkpoint,
             },
         )
+
+    def edit_image(
+        self,
+        *,
+        source_image: str | Path,
+        prompt: str,
+        negative_prompt: str = "",
+        mask_path: str | Path | None = None,
+        reference_images: list[str | Path] | None = None,
+        output_path: str | Path | None = None,
+        settings: dict[str, Any] | None = None,
+    ) -> GenerationResult:
+        """Reference-grounded img2img via LoadImage → VAEEncode → controlled denoise."""
+        settings = dict(settings or {})
+        seed = settings.get("seed")
+        if seed is None:
+            return GenerationResult(
+                success=False,
+                backend=self.name,
+                error="Explicit seed required — CAPOS does not use uncontrolled randomize",
+                metadata={"failure_kind": ComfyFailureKind.CONFIG_MISSING.value},
+            )
+        src = Path(source_image)
+        if not src.is_file():
+            return GenerationResult(
+                success=False,
+                backend=self.name,
+                error=f"Source image missing: {src}",
+                metadata={"failure_kind": ComfyFailureKind.CONFIG_MISSING.value},
+            )
+        ok, reason = self.available()
+        if not ok:
+            return GenerationResult(
+                success=False,
+                backend=self.name,
+                error=reason,
+                metadata={"failure_kind": ComfyFailureKind.UNAVAILABLE.value},
+            )
+
+        hw = resolve_generation_settings(load_hardware_profile())
+        width = int(settings.get("force_width", hw["width"]))
+        height = int(settings.get("force_height", hw["height"]))
+        if hw.get("vram_class") == "LOW_6GB" and "force_width" not in settings:
+            width = min(width, int(hw.get("width", 512)))
+            height = min(height, int(hw.get("height", 512)))
+
+        workflow_name = settings.get("workflow") or "style-recovery-img2img-low-vram.json"
+        configured, cfg_reason = workflow_is_configured(workflow_name)
+        if not configured:
+            return GenerationResult(
+                success=False,
+                backend=self.name,
+                error=cfg_reason,
+                metadata={"failure_kind": ComfyFailureKind.CONFIG_MISSING.value},
+            )
+
+        # Resize reference to generation size for latent shape match (does not overwrite source)
+        work = src
+        try:
+            with Image.open(src) as img:
+                if img.size != (width, height):
+                    resized = img.convert("RGB").resize((width, height), Image.Resampling.LANCZOS)
+                    if output_path:
+                        work = Path(output_path).parent / f"_capos_ref_{src.stem}_{width}.png"
+                        work.parent.mkdir(parents=True, exist_ok=True)
+                    else:
+                        work = src.with_name(f"_capos_ref_{src.stem}_{width}.png")
+                    resized.save(work)
+        except Exception as exc:  # noqa: BLE001
+            return GenerationResult(
+                success=False,
+                backend=self.name,
+                error=f"Failed to prepare reference image: {exc}",
+            )
+
+        t0 = time.time()
+        try:
+            client = self.client()
+            uploaded = client.upload_image(work, subfolder="capos")
+            load_name = uploaded["name"]
+            if uploaded.get("subfolder"):
+                # ComfyUI LoadImage often wants "subfolder/name"
+                load_name = f"{uploaded['subfolder']}/{uploaded['name']}".replace("\\", "/")
+
+            loaded = load_workflow(workflow_name)
+            meta_wf = loaded.get("_meta") or {}
+            steps = int(
+                settings.get("steps") or meta_wf.get("default_settings", {}).get("steps") or 20
+            )
+            cfg = float(
+                settings.get("cfg") or meta_wf.get("default_settings", {}).get("cfg") or 7.0
+            )
+            sampler_name = settings.get("sampler_name") or meta_wf.get("default_settings", {}).get(
+                "sampler_name", "euler"
+            )
+            scheduler = settings.get("scheduler") or meta_wf.get("default_settings", {}).get(
+                "scheduler", "normal"
+            )
+            denoise = float(
+                settings.get("denoise")
+                if settings.get("denoise") is not None
+                else meta_wf.get("default_settings", {}).get("denoise", 0.45)
+            )
+            checkpoint = os.environ.get("CAPOS_COMFYUI_CHECKPOINT") or meta_wf.get(
+                "default_checkpoint", "toonyou_beta6.safetensors"
+            )
+            wf = inject_basic_params(
+                loaded["prompt"],
+                positive=prompt,
+                negative=negative_prompt,
+                seed=int(seed),
+                width=width,
+                height=height,
+                steps=steps,
+                cfg=cfg,
+                checkpoint=checkpoint,
+                sampler_name=sampler_name,
+                scheduler=scheduler,
+                denoise=denoise,
+                load_image_filename=load_name,
+            )
+            prompt_id = client.queue_prompt(wf)
+            history = client.wait_for_completion(
+                prompt_id, timeout_s=float(settings.get("timeout_s", 300))
+            )
+            raw, meta = client.first_image_from_history(history)
+            out = Path(output_path) if output_path else Path(f"comfy_edit_{prompt_id}.png")
+            client.save_image_bytes(raw, out)
+            with Image.open(out) as img:
+                w, h = img.size
+                if w < 1 or h < 1:
+                    raise RuntimeError(ComfyFailureKind.INVALID_OUTPUT.value)
+            duration_ms = int((time.time() - t0) * 1000)
+            prov = load_model_provenance()
+            record_generation_telemetry(
+                {
+                    "backend": self.name,
+                    "model": checkpoint,
+                    "workflow": workflow_name,
+                    "width": w,
+                    "height": h,
+                    "resolution": f"{w}x{h}",
+                    "duration_ms": duration_ms,
+                    "success": True,
+                    "oom": False,
+                    "retry_count": 0,
+                    "seed": int(seed),
+                    "conditioning_method": "IMAGE_TO_IMAGE",
+                    "denoise": denoise,
+                    "candidate_id": settings.get("candidate_id"),
+                    "batch_id": settings.get("batch_id"),
+                }
+            )
+            return GenerationResult(
+                success=True,
+                output_path=out,
+                seed=int(seed),
+                backend=self.name,
+                model=checkpoint,
+                metadata={
+                    "provider": "comfyui-local",
+                    "workflow": workflow_name,
+                    "workflow_id": meta_wf.get("workflow_id"),
+                    "workflow_version": meta_wf.get("workflow_version"),
+                    "prompt_id": prompt_id,
+                    "comfy_image": meta,
+                    "width": w,
+                    "height": h,
+                    "steps": steps,
+                    "cfg": cfg,
+                    "sampler_name": sampler_name,
+                    "scheduler": scheduler,
+                    "denoise": denoise,
+                    "duration_ms": duration_ms,
+                    "generation_resolution": f"{w}x{h}",
+                    "positive_prompt": prompt,
+                    "negative_prompt": negative_prompt,
+                    "model_family": prov.get("architecture") or prov.get("family"),
+                    "model_licence_status": prov.get("licence_status"),
+                    "checkpoint": checkpoint,
+                    "conditioning_method": "IMAGE_TO_IMAGE",
+                    "conditioning_strength": denoise,
+                    "reference_upload": uploaded,
+                    "source_image": str(src),
+                    "mask_unused": mask_path is not None,
+                    "reference_images_count": len(reference_images or []),
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            kind = classify_comfy_error(str(exc))
+            record_generation_telemetry(
+                {
+                    "backend": self.name,
+                    "workflow": workflow_name,
+                    "success": False,
+                    "failure_kind": kind.value,
+                    "oom": kind == ComfyFailureKind.CUDA_OUT_OF_MEMORY,
+                    "duration_ms": int((time.time() - t0) * 1000),
+                }
+            )
+            return GenerationResult(
+                success=False,
+                backend=self.name,
+                error=str(exc),
+                metadata={
+                    "failure_kind": kind.value,
+                    "failed_resource_limit": kind == ComfyFailureKind.CUDA_OUT_OF_MEMORY,
+                    "conditioning_method": "IMAGE_TO_IMAGE",
+                },
+            )

@@ -69,11 +69,13 @@ def inject_basic_params(
     sampler_name: str | None = None,
     scheduler: str | None = None,
     denoise: float | None = None,
+    load_image_filename: str | None = None,
 ) -> dict[str, Any]:
     """Inject into nodes via capos_role tags or standard class_type heuristics.
 
     Always sets an explicit seed when provided — never leaves randomize-after-generate
     as the source of truth for CAPOS provenance.
+    For img2img, pass load_image_filename (ComfyUI input folder name after upload).
     """
     prompt = copy.deepcopy(workflow_prompt)
     report = validate_api_workflow(prompt)
@@ -95,6 +97,9 @@ def inject_basic_params(
             _apply(nid, ckpt_name=checkpoint)
     for nid in roles.get("size") or []:
         _apply(nid, width=int(width), height=int(height), batch_size=1)
+    if load_image_filename:
+        for nid in roles.get("load_image") or []:
+            _apply(nid, image=load_image_filename)
     for nid in roles.get("sampler") or []:
         updates: dict[str, Any] = {}
         if seed is not None:

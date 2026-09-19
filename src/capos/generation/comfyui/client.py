@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 import time
 import uuid
 from enum import StrEnum
@@ -137,6 +138,68 @@ class ComfyUIClient:
 
     def interrupt(self) -> None:
         self._request("POST", "/interrupt", data=b"{}")
+
+    def upload_image(
+        self,
+        local_path: str | Path,
+        *,
+        subfolder: str = "",
+        overwrite: bool = True,
+    ) -> dict[str, Any]:
+        """Upload a local image to ComfyUI input folder (POST /upload/image).
+
+        Returns dict with at least ``name`` (filename for LoadImage node).
+        """
+        path = Path(local_path)
+        if not path.is_file():
+            raise FileNotFoundError(f"Cannot upload missing image: {path}")
+        boundary = f"----capos{uuid.uuid4().hex}"
+        mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        raw = path.read_bytes()
+        parts: list[bytes] = []
+
+        def _field(name: str, value: str) -> None:
+            parts.append(
+                (
+                    f"--{boundary}\r\n"
+                    f'Content-Disposition: form-data; name="{name}"\r\n\r\n'
+                    f"{value}\r\n"
+                ).encode("utf-8")
+            )
+
+        _field("overwrite", "true" if overwrite else "false")
+        if subfolder:
+            _field("subfolder", subfolder)
+        parts.append(
+            (
+                f"--{boundary}\r\n"
+                f'Content-Disposition: form-data; name="image"; filename="{path.name}"\r\n'
+                f"Content-Type: {mime}\r\n\r\n"
+            ).encode("utf-8")
+        )
+        parts.append(raw)
+        parts.append(b"\r\n")
+        parts.append(f"--{boundary}--\r\n".encode("utf-8"))
+        body = b"".join(parts)
+        status, resp = self._request(
+            "POST",
+            "/upload/image",
+            data=body,
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            timeout=60,
+        )
+        if status not in {200, 201}:
+            raise RuntimeError(f"ComfyUI /upload/image failed HTTP {status}: {resp[:800]!r}")
+        data = json.loads(resp.decode("utf-8"))
+        name = data.get("name") or data.get("filename")
+        if not name:
+            raise RuntimeError(f"ComfyUI upload missing filename: {data}")
+        return {
+            "name": name,
+            "subfolder": data.get("subfolder") or subfolder or "",
+            "type": data.get("type") or "input",
+            "raw": data,
+        }
 
     def fetch_image(self, *, filename: str, subfolder: str = "", folder_type: str = "output") -> bytes:
         qs = urlencode({"filename": filename, "subfolder": subfolder, "type": folder_type})
