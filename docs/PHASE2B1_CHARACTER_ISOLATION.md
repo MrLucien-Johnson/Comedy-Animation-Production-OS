@@ -33,13 +33,24 @@ If cropped img2img still cannot hold identity without sheet contamination, evalu
 
 Report required files/nodes in a future PR before installing.
 
-## Derived crop
+## Visual crop UI
 
-1. Source: `character-likkle-jay-v1` (sheet) — **never modified**
-2. Crop front-facing full-body Jay only
-3. Store: `character-likkle-jay-front-derived-v1`
-4. Provenance: source id, source SHA-256, crop box, derived SHA-256
-5. Status: CANDIDATE until human APPROVE
+Streamlit uses **`streamlit-cropper`** (free) so the operator drags a rectangle on
+the displayed sheet. Coordinates are mapped back to **ORIGINAL file pixels**.
+
+### Cause of the previous numeric-crop failure
+
+`st.image` showed a browser-scaled preview of the 1254×1254 sheet, while
+`number_input` values were applied as original-file pixels via `PIL.crop`.
+Defaults `right≤256` / `bottom≤512` selected the upper-left logo. This was
+**display vs original scale confusion** — not 512×512 normalization or EXIF.
+
+Install on the RTX 3050 machine if needed:
+
+```powershell
+pip install "streamlit-cropper>=0.3.1,<0.4"
+```
+
 
 ## Denoise experiment (hard band 0.30–0.45)
 

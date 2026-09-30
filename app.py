@@ -29,10 +29,17 @@ from capos.generation.capabilities import capability_matrix, select_production_p
 from capos.generation.provider_status import provider_dashboard_status
 from capos.generation.registry import try_register_optional_backends
 from capos.pipeline.readiness import evaluate_season_production_ready
+from capos.references.crop_coords import (
+    COORDINATE_MISMATCH_CAUSE,
+    compute_display_scale,
+    map_display_box_to_original,
+    open_rgb_corrected,
+)
 from capos.references.derived_crop import (
     CropBox,
     character_isolation_gate,
     create_derived_character_crop,
+    delete_candidate_derived,
     find_likkle_jay_sheet_reference,
 )
 from capos.references.golden import GoldenFrameStore
@@ -584,11 +591,20 @@ elif nav == "References":
 
     st.markdown("### CREATE DERIVED CHARACTER REFERENCE (Phase 2B.1)")
     st.caption(
-        "Crop one front-facing full-body Likkle Jay from the character sheet. "
-        "Original file is never modified. Derived ref requires human approval."
+        "Visually select the FIRST front-facing full-body Likkle Jay on the top character row. "
+        "Original sheet is never modified. Derived ref requires explicit human approval."
     )
+    with st.expander("Why the old numeric crop was wrong", expanded=False):
+        st.write(COORDINATE_MISMATCH_CAUSE)
     iso_gate = character_isolation_gate(vstore)
-    st.json(iso_gate)
+    st.json(
+        {
+            "stop": iso_gate.get("stop"),
+            "derived_reference_approved": iso_gate.get("derived_reference_approved"),
+            "original": iso_gate.get("original_reference"),
+            "derived": iso_gate.get("derived_reference"),
+        }
+    )
     sheet = find_likkle_jay_sheet_reference(vstore)
     source_options = [r.reference_id for r in vstore.list_references()]
     default_src = sheet.reference_id if sheet else (source_options[0] if source_options else "")
@@ -596,42 +612,151 @@ elif nav == "References":
         "Source sheet reference",
         source_options or ["(import sheet first)"],
         index=source_options.index(default_src) if default_src in source_options else 0,
+        key="derived_crop_source",
     )
     src_ref = vstore.get(src_id) if src_id in source_options else None
-    if src_ref and Path(src_ref.file).is_file():
-        from PIL import Image as PILImage
+    pending = vstore.get("character-likkle-jay-front-derived-v1")
 
-        with PILImage.open(src_ref.file) as im:
-            sw, sh = im.size
-        st.image(src_ref.file, caption=f"Source {src_ref.reference_id} · {sw}×{sh}")
-        c1, c2, c3, c4 = st.columns(4)
-        left = c1.number_input("left", min_value=0, max_value=sw - 1, value=0)
-        top = c2.number_input("top", min_value=0, max_value=sh - 1, value=0)
-        right = c3.number_input("right", min_value=1, max_value=sw, value=min(sw, 256))
-        bottom = c4.number_input("bottom", min_value=1, max_value=sh, value=min(sh, 512))
-        if right > left and bottom > top:
-            with PILImage.open(src_ref.file) as im:
-                preview = im.convert("RGB").crop((int(left), int(top), int(right), int(bottom)))
-            st.image(preview, caption="Crop preview", use_container_width=True)
-        derived_id = st.text_input("Derived ID", "character-likkle-jay-front-derived-v1")
+    if pending and pending.status == CanonStatus.CANDIDATE and Path(pending.file).is_file():
+        st.markdown("#### Review derived crop (not approved yet)")
+        r1, r2 = st.columns(2)
+        with r1:
+            st.markdown("**ORIGINAL**")
+            if src_ref and Path(src_ref.file).is_file():
+                st.image(src_ref.file, use_container_width=True)
+                st.caption(
+                    f"{src_ref.reference_id} · {src_ref.width}×{src_ref.height} · "
+                    f"sha {src_ref.checksum[:12]}…"
+                )
+        with r2:
+            st.markdown("**DERIVED CROP**")
+            st.image(pending.file, use_container_width=True)
+            st.caption(
+                f"{pending.reference_id} · {pending.width}×{pending.height} · "
+                f"sha {pending.checksum[:12]}…"
+            )
+            st.json(
+                {
+                    "crop_original_pixels": (pending.provenance or {}).get(
+                        "crop_coordinates_original_pixels"
+                    ),
+                    "original_source_dimensions": (pending.provenance or {}).get(
+                        "original_source_dimensions"
+                    ),
+                    "source_sha256": (pending.provenance or {}).get("source_sha256"),
+                    "display_mapping": (pending.provenance or {}).get("display_mapping"),
+                }
+            )
+        a1, a2 = st.columns(2)
+        if a1.button("APPROVE DERIVED REFERENCE", type="primary"):
+            try:
+                vstore.approve_reference(pending.reference_id)
+                st.success("Derived reference APPROVED — gate may proceed to isolation generation.")
+                st.rerun()
+            except Exception as exc:
+                st.error(str(exc))
+        if a2.button("REDO CROP"):
+            try:
+                delete_candidate_derived(vstore, pending.reference_id)
+                st.info("Candidate derived crop removed — select a new rectangle below.")
+                st.rerun()
+            except Exception as exc:
+                st.error(str(exc))
+        st.warning("CURRENT GATE: AWAITING_DERIVED_REFERENCE_APPROVAL — do not generate A/B/C yet.")
+
+    elif pending and pending.status == CanonStatus.APPROVED:
+        st.success(
+            f"Derived reference `{pending.reference_id}` is APPROVED. "
+            "Isolation generation may proceed separately."
+        )
+        st.image(pending.file, caption="Approved derived front reference", use_container_width=True)
+
+    elif src_ref and Path(src_ref.file).is_file():
+        try:
+            from streamlit_cropper import st_cropper
+        except ImportError:
+            st.error(
+                "Missing package `streamlit-cropper`. Install with: "
+                "pip install 'streamlit-cropper>=0.3.1,<0.4'"
+            )
+            st.stop()
+
+        src_img = open_rgb_corrected(src_ref.file)
+        ow, oh = src_img.size
+        scale = compute_display_scale(ow, oh)
+        st.info(
+            f"Source file pixels: **{ow}×{oh}**. "
+            f"Cropper display canvas: **{scale.display_width}×{scale.display_height}** "
+            f"(scale_x={scale.scale_x:.4f}, scale_y={scale.scale_y:.4f}). "
+            "Drag the rectangle onto the first front-facing full-body Jay "
+            "(top character row). Coordinates below are ORIGINAL image pixels."
+        )
+        # Visual cropper — returns box already scaled to original when should_resize_image=True
+        box = st_cropper(
+            src_img,
+            realtime_update=True,
+            box_color="#E85D04",
+            aspect_ratio=None,
+            return_type="box",
+            key="likkle_jay_front_cropper",
+            should_resize_image=True,
+        )
+        # Audit mapping explicitly (display space → original) for provenance + tests
+        # st_cropper already returns original-pixel box; reconstruct display box for audit
+        display_left = box["left"] / scale.scale_x
+        display_top = box["top"] / scale.scale_y
+        display_w = box["width"] / scale.scale_x
+        display_h = box["height"] / scale.scale_y
+        mapped = map_display_box_to_original(
+            left=display_left,
+            top=display_top,
+            width=display_w,
+            height=display_h,
+            scale=scale,
+        )
+        # Prefer cropper's own original-pixel box (authoritative from the component)
+        crop_box = CropBox(
+            int(box["left"]),
+            int(box["top"]),
+            int(box["left"] + box["width"]),
+            int(box["top"] + box["height"]),
+        )
+        st.markdown("**Original-image pixel coordinates (from visual selection)**")
+        st.code(
+            f"left={crop_box.left}  top={crop_box.top}  "
+            f"right={crop_box.right}  bottom={crop_box.bottom}  "
+            f"({crop_box.right - crop_box.left}×{crop_box.bottom - crop_box.top} px)"
+        )
+        preview = src_img.crop((crop_box.left, crop_box.top, crop_box.right, crop_box.bottom))
+        st.image(preview, caption="Live crop preview (original pixels)", use_container_width=True)
+        derived_id = st.text_input(
+            "Derived ID", "character-likkle-jay-front-derived-v1", key="derived_id_input"
+        )
         crop_notes = st.text_input(
             "Notes",
-            "Front-facing full-body Likkle Jay isolated from character sheet",
+            "Front-facing full-body Likkle Jay isolated from character sheet (visual crop)",
+            key="derived_notes",
         )
         if st.button("SAVE DERIVED REFERENCE"):
             try:
                 derived = create_derived_character_crop(
                     vstore,
                     source_reference_id=src_id,
-                    crop=CropBox(int(left), int(top), int(right), int(bottom)),
+                    crop=crop_box,
                     derived_id=derived_id,
                     notes=crop_notes,
+                    allow_replace_candidate=True,
+                    display_mapping={
+                        "component": "streamlit-cropper",
+                        "should_resize_image": True,
+                        "mapped_audit": mapped,
+                        "cropper_box_original_pixels": dict(box),
+                        "coordinate_mismatch_cause": COORDINATE_MISMATCH_CAUSE,
+                    },
                 )
                 st.success(
-                    f"Saved {derived.reference_id} · checksum {derived.checksum[:16]}… "
-                    "(status CANDIDATE — approve below)"
+                    f"Saved {derived.reference_id} as CANDIDATE — approve via side-by-side review above."
                 )
-                st.json(derived.provenance)
                 st.rerun()
             except Exception as exc:
                 st.error(str(exc))

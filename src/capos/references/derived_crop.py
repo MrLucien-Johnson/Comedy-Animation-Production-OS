@@ -5,13 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from PIL import Image
-
 from capos.core.errors import ValidationError
 from capos.core.schemas import utcnow
 from capos.core.status import CanonStatus, VisualReferenceType
 from capos.generation.image_validate import validate_candidate_image
 from capos.production.storage import sha256_file
+from capos.references.crop_coords import open_rgb_corrected
 from capos.references.ingestion import VisualReference, VisualReferenceStore
 
 
@@ -52,11 +51,17 @@ def create_derived_character_crop(
     crop: CropBox,
     derived_id: str = "character-likkle-jay-front-derived-v1",
     notes: str = "Front-facing full-body Likkle Jay isolated from character sheet",
+    allow_replace_candidate: bool = False,
+    display_mapping: dict[str, Any] | None = None,
 ) -> VisualReference:
-    """Crop a clean character figure from an approved sheet. Never modifies the source file."""
+    """Crop a clean character figure from an approved sheet. Never modifies the source file.
+
+    If ``allow_replace_candidate`` and an existing derived ref is still CANDIDATE (not
+    APPROVED), replace its file/metadata for REDO CROP. APPROVED derived refs are never
+    overwritten.
+    """
     source = store.get(source_reference_id)
     if not source:
-        # Also allow matching by filename stem inside any reference
         for ref in store.list_references():
             if (
                 source_reference_id in ref.reference_id
@@ -76,17 +81,21 @@ def create_derived_character_crop(
 
     existing = store.get(derived_id)
     if existing:
-        raise ValidationError(
-            f"Derived reference {derived_id} already exists — never overwrite",
-            hint="Use a new derived_id / version suffix",
-        )
+        if existing.status == CanonStatus.APPROVED:
+            raise ValidationError(
+                f"Derived reference {derived_id} is APPROVED — create a new version id instead of overwrite",
+            )
+        if not allow_replace_candidate:
+            raise ValidationError(
+                f"Derived reference {derived_id} already exists — never overwrite",
+                hint="Use allow_replace_candidate=True for REDO CROP while status is CANDIDATE",
+            )
 
     source_checksum = source.checksum or sha256_file(src_path)
-    with Image.open(src_path) as img:
-        img = img.convert("RGB")
-        w, h = img.size
-        crop.validate_against(w, h)
-        cropped = img.crop((crop.left, crop.top, crop.right, crop.bottom))
+    img = open_rgb_corrected(src_path)
+    w, h = img.size
+    crop.validate_against(w, h)
+    cropped = img.crop((crop.left, crop.top, crop.right, crop.bottom))
 
     dest_dir = (
         store.imports_dir
@@ -95,16 +104,38 @@ def create_derived_character_crop(
     )
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest = dest_dir / f"{derived_id}.png"
-    if dest.exists():
+    if dest.exists() and not (existing and allow_replace_candidate):
         raise ValidationError(f"Destination already exists: {dest}")
     cropped.save(dest, format="PNG")
 
     validation = validate_candidate_image(dest, require_square=False)
     if not validation["ok"]:
-        dest.unlink(missing_ok=True)
+        if not existing:
+            dest.unlink(missing_ok=True)
         raise ValidationError(f"Invalid derived image: {validation.get('error')}")
 
     checksum = sha256_file(dest)
+    provenance: dict[str, Any] = {
+        "derived": True,
+        "source_reference_id": source.reference_id,
+        "source_file": str(src_path),
+        "source_path": str(src_path),
+        "source_sha256": source_checksum,
+        "original_source_dimensions": {"width": w, "height": h},
+        "crop_coordinates_original_pixels": crop.as_dict(),
+        "crop": crop.as_dict(),
+        "derived_sha256": checksum,
+        "created_at": utcnow().isoformat(),
+        "original_untouched": True,
+        "auto_canonical": False,
+        "coordinate_space": "ORIGINAL_IMAGE_PIXELS",
+    }
+    if display_mapping:
+        provenance["display_mapping"] = display_mapping
+    if existing and allow_replace_candidate:
+        provenance["replaced_previous_checksum"] = existing.checksum
+        provenance["redo_crop"] = True
+
     ref = VisualReference(
         reference_id=derived_id,
         series_id=store.series_id,
@@ -115,23 +146,31 @@ def create_derived_character_crop(
         checksum=checksum,
         notes=notes,
         source="derived_crop",
-        provenance={
-            "derived": True,
-            "source_reference_id": source.reference_id,
-            "source_file": str(src_path),
-            "source_sha256": source_checksum,
-            "crop": crop.as_dict(),
-            "derived_sha256": checksum,
-            "created_at": utcnow().isoformat(),
-            "original_untouched": True,
-            "auto_canonical": False,
-        },
+        provenance=provenance,
         status=CanonStatus.CANDIDATE,
     )
     data = store._load_index()
     data.setdefault("references", {})[derived_id] = ref.model_dump(mode="json")
     store._save_index(data)
     return ref
+
+
+def delete_candidate_derived(
+    store: VisualReferenceStore,
+    derived_id: str = "character-likkle-jay-front-derived-v1",
+) -> None:
+    """Remove a CANDIDATE derived ref so REDO CROP can start clean. Never deletes APPROVED."""
+    existing = store.get(derived_id)
+    if not existing:
+        return
+    if existing.status == CanonStatus.APPROVED:
+        raise ValidationError("Cannot redo/delete an APPROVED derived reference")
+    data = store._load_index()
+    data.get("references", {}).pop(derived_id, None)
+    store._save_index(data)
+    path = Path(existing.file)
+    if path.is_file():
+        path.unlink()
 
 
 def find_likkle_jay_sheet_reference(store: VisualReferenceStore) -> VisualReference | None:
@@ -168,6 +207,11 @@ def character_isolation_gate(store: VisualReferenceStore) -> dict[str, Any]:
                 "file": sheet.file,
                 "checksum": sheet.checksum,
                 "status": sheet.status.value,
+                "dimensions": (
+                    {"width": sheet.width, "height": sheet.height}
+                    if sheet.width and sheet.height
+                    else None
+                ),
             }
             if sheet
             else None
@@ -178,8 +222,13 @@ def character_isolation_gate(store: VisualReferenceStore) -> dict[str, Any]:
                 "file": derived.file,
                 "checksum": derived.checksum,
                 "status": derived.status.value,
-                "crop": (derived.provenance or {}).get("crop"),
+                "crop": (derived.provenance or {}).get("crop_coordinates_original_pixels")
+                or (derived.provenance or {}).get("crop"),
+                "original_source_dimensions": (derived.provenance or {}).get(
+                    "original_source_dimensions"
+                ),
                 "source_reference_id": (derived.provenance or {}).get("source_reference_id"),
+                "source_sha256": (derived.provenance or {}).get("source_sha256"),
             }
             if derived
             else None
@@ -190,7 +239,7 @@ def character_isolation_gate(store: VisualReferenceStore) -> dict[str, Any]:
         "preferred_derived_id": "character-likkle-jay-front-derived-v1",
         "ui_action": (
             "Streamlit → References → CREATE DERIVED CHARACTER REFERENCE "
-            "(crop front-facing full-body Jay) → APPROVE REFERENCE → "
-            "run scripts/phase2b1_character_isolation.py"
+            "(visual crop front-facing full-body Jay) → side-by-side review → "
+            "APPROVE DERIVED REFERENCE → then run isolation generation"
         ),
     }

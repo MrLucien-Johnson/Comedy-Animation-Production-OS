@@ -82,7 +82,7 @@ def test_derived_crop_preserves_original(tmp_project):
     assert derived.provenance["source_sha256"] == ref.checksum
     assert derived.provenance["crop"]["left"] == 50
     assert derived.provenance["original_untouched"] is True
-    with pytest.raises(ValidationError, match="never overwrite"):
+    with pytest.raises(ValidationError, match="never overwrite|already exists"):
         create_derived_character_crop(
             store,
             source_reference_id="character-likkle-jay-v1",
