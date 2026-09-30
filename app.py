@@ -474,6 +474,25 @@ elif nav == "References":
     vstore = VisualReferenceStore(series_id, root=root)
     gate = vstore.style_recovery_gate()
     st.json(gate)
+    st.info(
+        f"Drop folder (put established Likkle Jay images here):\n\n"
+        f"`{gate.get('drop_folder')}`\n\n"
+        f"Found **{gate.get('drop_folder_image_count', 0)}** image(s). "
+        "After placing files, use **Import from drop folder** below "
+        "or: `python scripts/phase2b_import_style_references.py --approve --approve-set`"
+    )
+    if st.button("Import from drop folder (STYLE_REFERENCE) + build set"):
+        try:
+            result = vstore.import_from_folder(
+                approve=True,
+                set_id="likkle-jay-style-reference-set-v1",
+                approve_set=True,
+            )
+            st.write(result)
+            st.rerun()
+        except Exception as exc:
+            st.error(str(exc))
+
     st.markdown("### Import Visual Reference")
     ref_type = st.selectbox(
         "Reference type",

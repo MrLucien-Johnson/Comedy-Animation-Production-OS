@@ -20,6 +20,17 @@ from capos.production.storage import sha256_file
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 
 
+def style_reference_drop_folder(*, root: Path | None = None) -> Path:
+    """Operator drop folder at project root: ``visual_references/``.
+
+    Images placed here are staged for import into
+    ``series/<id>/visual_references/imports/`` (never overwritten once ingested).
+    """
+    from capos.core.paths import project_root
+
+    return (root or project_root()) / "visual_references"
+
+
 class VisualReference(BaseModel):
     reference_id: str
     series_id: str
@@ -232,6 +243,81 @@ class VisualReferenceStore:
         self._save_sets(data)
         return s
 
+    def list_drop_folder_images(self, folder: str | Path | None = None) -> list[Path]:
+        """List PNG/JPG/WEBP in the operator drop folder (non-recursive by default)."""
+        drop = Path(folder) if folder else style_reference_drop_folder(root=self.root)
+        if not drop.is_dir():
+            return []
+        files: list[Path] = []
+        for path in sorted(drop.rglob("*")):
+            if path.is_file() and path.suffix.lower() in ALLOWED_EXTENSIONS:
+                files.append(path)
+        return files
+
+    def import_from_folder(
+        self,
+        folder: str | Path | None = None,
+        *,
+        reference_type: VisualReferenceType = VisualReferenceType.STYLE_REFERENCE,
+        approve: bool = False,
+        set_id: str | None = None,
+        set_notes: str = "Imported from operator drop folder",
+        approve_set: bool = False,
+    ) -> dict[str, Any]:
+        """Import all images from drop folder into the visual reference store.
+
+        Default folder: ``<project>/visual_references/`` (e.g. Windows
+        ``D:\\Apps\\...\\Comedy-Animation-Production-OS\\visual_references``).
+        """
+        drop = Path(folder) if folder else style_reference_drop_folder(root=self.root)
+        files = self.list_drop_folder_images(drop)
+        imported: list[VisualReference] = []
+        skipped: list[dict[str, str]] = []
+        for src in files:
+            rid = f"{reference_type.value.lower()}-{src.stem}"
+            try:
+                ref = self.import_reference(
+                    src,
+                    reference_type=reference_type,
+                    reference_id=rid,
+                    notes=f"Drop-folder import from {src.name}",
+                    source=f"drop_folder:{drop}",
+                )
+                if approve:
+                    ref = self.approve_reference(ref.reference_id)
+                imported.append(ref)
+            except ValidationError as exc:
+                skipped.append({"file": str(src), "reason": str(exc)})
+
+        set_result = None
+        preferred = set_id or "likkle-jay-style-reference-set-v1"
+        if imported:
+            member_ids = [r.reference_id for r in imported]
+            existing_approved = [
+                r.reference_id
+                for r in self.list_references(reference_type=reference_type)
+                if r.status == CanonStatus.APPROVED and r.reference_id not in member_ids
+            ]
+            member_ids = existing_approved + member_ids
+            if 1 <= len(member_ids) <= 12:
+                try:
+                    s = self.create_or_update_set(preferred, member_ids, notes=set_notes)
+                    if approve_set and approve:
+                        s = self.approve_set(preferred)
+                    set_result = s.model_dump(mode="json")
+                except ValidationError as exc:
+                    set_result = {"error": str(exc), "set_id": preferred}
+
+        return {
+            "drop_folder": str(drop),
+            "found": len(files),
+            "imported_count": len(imported),
+            "imported_ids": [r.reference_id for r in imported],
+            "skipped": skipped,
+            "set": set_result,
+            "gate": self.style_recovery_gate(),
+        }
+
     def style_recovery_gate(self) -> dict[str, Any]:
         """Report whether style recovery can run."""
         style_refs = self.list_references(reference_type=VisualReferenceType.STYLE_REFERENCE)
@@ -239,6 +325,8 @@ class VisualReferenceStore:
         sets = self.list_sets()
         approved_sets = [s for s in sets if s.status == CanonStatus.APPROVED]
         ready = bool(approved_sets) and any(len(s.reference_ids) >= 1 for s in approved_sets)
+        drop = style_reference_drop_folder(root=self.root)
+        drop_files = self.list_drop_folder_images(drop)
         return {
             "ready": ready,
             "stop": None if ready else "AWAITING_STYLE_REFERENCE_IMPORT",
@@ -246,6 +334,13 @@ class VisualReferenceStore:
             "approved_style_reference_count": len(approved_refs),
             "approved_sets": [s.set_id for s in approved_sets],
             "import_folder": str(self.imports_dir),
-            "ui_action": "Streamlit → References → Import Visual Reference → create/approve set",
+            "drop_folder": str(drop),
+            "drop_folder_image_count": len(drop_files),
+            "drop_folder_images": [p.name for p in drop_files[:20]],
+            "ui_action": (
+                "Place 3–8 established Likkle Jay images in project-root visual_references/ "
+                "then run: python scripts/phase2b_import_style_references.py --approve --approve-set "
+                "OR Streamlit → References → Import from drop folder"
+            ),
             "preferred_set_id": "likkle-jay-style-reference-set-v1",
         }

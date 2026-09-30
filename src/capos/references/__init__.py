@@ -4,6 +4,7 @@ from capos.references.ingestion import (
     StyleReferenceSet,
     VisualReference,
     VisualReferenceStore,
+    style_reference_drop_folder,
 )
 from capos.references.versioning import ReferenceStore
 
@@ -12,4 +13,5 @@ __all__ = [
     "StyleReferenceSet",
     "VisualReference",
     "VisualReferenceStore",
+    "style_reference_drop_folder",
 ]

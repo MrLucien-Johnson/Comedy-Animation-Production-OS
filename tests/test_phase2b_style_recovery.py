@@ -213,6 +213,25 @@ def test_generate_style_recovery_with_mock_edit(tmp_project):
         assert c.qa_summary.get("identity_claim") is False
 
 
+def test_drop_folder_import_from_project_root(tmp_project):
+    drop = tmp_project / "visual_references"
+    drop.mkdir(parents=True, exist_ok=True)
+    for i in range(3):
+        _png(drop / f"jay_kitchen_{i}.png", color=(150 + i * 10, 100, 60))
+    store = VisualReferenceStore("likkle-jay", root=tmp_project)
+    listed = store.list_drop_folder_images()
+    assert len(listed) == 3
+    result = store.import_from_folder(approve=True, approve_set=True)
+    assert result["imported_count"] == 3
+    assert result["gate"]["ready"] is True
+    assert result["gate"]["drop_folder_image_count"] == 3
+    assert "likkle-jay-style-reference-set-v1" in result["gate"]["approved_sets"]
+    # Never overwrite on second import of same stems
+    again = store.import_from_folder(approve=True)
+    assert again["imported_count"] == 0
+    assert len(again["skipped"]) == 3
+
+
 def test_compare_to_reference_no_fake_score(tmp_project):
     store = VisualReferenceStore("likkle-jay", root=tmp_project)
     src = _png(tmp_project / "cref.png")

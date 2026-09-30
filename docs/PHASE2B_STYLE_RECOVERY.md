@@ -61,6 +61,26 @@ Import folder (exact):
 series/likkle-jay/visual_references/imports/
 ```
 
+**Operator drop folder (put files here first):**
+
+```
+visual_references/
+```
+
+Windows example:
+
+```
+D:\Apps\comedy-animation-production-os\Comedy-Animation-Production-OS\visual_references
+```
+
+Then run:
+
+```bash
+python scripts/phase2b_import_style_references.py --approve --approve-set
+```
+
+This copies into the series import store (never overwrites) and builds `likkle-jay-style-reference-set-v1`.
+
 ## Conditioning study (RTX 3050 / 6 GB)
 
 | Method | VRAM risk | Phase 2B choice |
