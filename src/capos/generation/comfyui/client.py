@@ -139,6 +139,14 @@ class ComfyUIClient:
     def interrupt(self) -> None:
         self._request("POST", "/interrupt", data=b"{}")
 
+    def get_object_info(self) -> dict[str, Any]:
+        """Return ComfyUI node class registry (GET /object_info). Empty dict if unavailable."""
+        status, body = self._request("GET", "/object_info", timeout=15)
+        if status != 200 or not body:
+            return {}
+        data = json.loads(body.decode("utf-8"))
+        return data if isinstance(data, dict) else {}
+
     def upload_image(
         self,
         local_path: str | Path,

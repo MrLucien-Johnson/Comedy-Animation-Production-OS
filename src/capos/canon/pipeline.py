@@ -18,6 +18,7 @@ from capos.canon.prompts import (
     STYLE_MASTER_SEEDS,
     STYLE_NEGATIVE,
     STYLE_RECOVERY_DENOISE,
+    STYLE_RECOVERY_DEFAULT_DENOISE,
     STYLE_RECOVERY_NEGATIVE,
     STYLE_RECOVERY_PROMPT,
     STYLE_RECOVERY_PROMPT_VERSION,
@@ -377,11 +378,20 @@ class CanonCreationPipeline:
         *,
         count: int = 3,
         set_id: str = "likkle-jay-style-reference-set-v1",
+        target: str = "likkle-jay",
+        denoise: float | None = None,
     ) -> CandidateBatch:
-        """Reference-grounded style recovery via img2img. Exactly 3 candidates when count=3.
+        """Reference-grounded style recovery via genuine ComfyUI img2img only.
 
         Requires approved style reference set. Does NOT generate character masters.
+        Never falls back to mock or txt2img. Uses ONE target reference (not blended).
+        First experiment: same denoise, vary seed only.
         """
+        from capos.generation.comfyui.style_recovery_health import (
+            STYLE_RECOVERY_WORKFLOW,
+            comfyui_style_recovery_healthcheck,
+            select_target_reference,
+        )
         from capos.references.ingestion import VisualReferenceStore
 
         batch_id = "style-recovery-batch-001"
@@ -397,9 +407,9 @@ class CanonCreationPipeline:
                 blocker=gate.get("stop") or "AWAITING_STYLE_REFERENCE_IMPORT",
                 recommendation_notes=[
                     f"Import folder: {gate.get('import_folder')}",
+                    f"Drop folder: {gate.get('drop_folder')}",
                     str(gate.get("ui_action") or ""),
                     f"Preferred set: {gate.get('preferred_set_id')}",
-                    "Approve 3–8 STYLE_REFERENCE images, create set, approve set, then regenerate.",
                 ],
             )
             return self.batches.upsert(batch)
@@ -424,7 +434,7 @@ class CanonCreationPipeline:
         refs = []
         for rid in ref_set.reference_ids:
             ref = vstore.get(rid)
-            if ref and Path(ref.file).is_file():
+            if ref and Path(ref.file).is_file() and ref.status == CanonStatus.APPROVED:
                 refs.append(ref)
         if not refs:
             batch = CandidateBatch(
@@ -433,7 +443,20 @@ class CanonCreationPipeline:
                 step=CanonStep.STYLE_RECOVERY,
                 target_asset_id="style-likkle-jay-v1",
                 status=CanonStatus.AWAITING_STYLE_REFERENCE_IMPORT,
-                blocker="Approved set has no readable reference files",
+                blocker="Approved set has no readable APPROVED reference files",
+            )
+            return self.batches.upsert(batch)
+
+        try:
+            primary_ref = select_target_reference(refs, target=target)
+        except RuntimeError as exc:
+            batch = CandidateBatch(
+                batch_id=batch_id,
+                series_id=self.series_id,
+                step=CanonStep.STYLE_RECOVERY,
+                target_asset_id="style-likkle-jay-v1",
+                status=CanonStatus.AWAITING_STYLE_REFERENCE_IMPORT,
+                blocker=str(exc),
             )
             return self.batches.upsert(batch)
 
@@ -447,7 +470,44 @@ class CanonCreationPipeline:
                 status=CanonStatus.BLOCKED_NO_PROVIDER,
                 blocker=provider_or_reason,
                 recommendation_notes=[
-                    "Configure CAPOS_COMFYUI_URL + CAPOS_COMFYUI_CHECKPOINT for img2img recovery.",
+                    "Configure CAPOS_COMFYUI_URL=http://127.0.0.1:8188",
+                    "Configure CAPOS_COMFYUI_CHECKPOINT=toonyou_beta6.safetensors",
+                    "MOCK FALLBACK DISABLED for style recovery.",
+                ],
+            )
+            return self.batches.upsert(batch)
+
+        if provider_or_reason != "comfyui":
+            batch = CandidateBatch(
+                batch_id=batch_id,
+                series_id=self.series_id,
+                step=CanonStep.STYLE_RECOVERY,
+                target_asset_id="style-likkle-jay-v1",
+                status=CanonStatus.BLOCKED_NO_PROVIDER,
+                blocker=(
+                    f"MOCK/TXT2IMG FALLBACK DISABLED — style recovery requires provider=comfyui, "
+                    f"got '{provider_or_reason}'"
+                ),
+            )
+            return self.batches.upsert(batch)
+
+        health = comfyui_style_recovery_healthcheck(
+            reference_path=primary_ref.file,
+            root=self.root,
+        )
+        if not health.get("ok"):
+            batch = CandidateBatch(
+                batch_id=batch_id,
+                series_id=self.series_id,
+                step=CanonStep.STYLE_RECOVERY,
+                target_asset_id="style-likkle-jay-v1",
+                status=CanonStatus.BLOCKED_NO_PROVIDER,
+                blocker=health.get("remediation") or "ComfyUI img2img health check failed",
+                recommendation_notes=[
+                    f"comfyui_connection={health.get('comfyui_connection')}",
+                    f"workflow_mode={health.get('workflow_mode')}",
+                    f"checkpoint={health.get('checkpoint')}",
+                    "TXT2IMG_FALLBACK=DISABLED MOCK_FALLBACK=DISABLED",
                 ],
             )
             return self.batches.upsert(batch)
@@ -455,18 +515,18 @@ class CanonCreationPipeline:
         from capos.generation.registry import try_register_optional_backends
 
         try_register_optional_backends()
-        if provider_or_reason not in _REGISTRY:
+        if "comfyui" not in _REGISTRY:
             batch = CandidateBatch(
                 batch_id=batch_id,
                 series_id=self.series_id,
                 step=CanonStep.STYLE_RECOVERY,
                 target_asset_id="style-likkle-jay-v1",
                 status=CanonStatus.BLOCKED_NO_PROVIDER,
-                blocker=f"Provider '{provider_or_reason}' not registered",
+                blocker="ComfyUI backend not registered",
             )
             return self.batches.upsert(batch)
 
-        backend = _REGISTRY[provider_or_reason]()
+        backend = _REGISTRY["comfyui"]()
         if not backend.supports_edit():
             batch = CandidateBatch(
                 batch_id=batch_id,
@@ -474,29 +534,37 @@ class CanonCreationPipeline:
                 step=CanonStep.STYLE_RECOVERY,
                 target_asset_id="style-likkle-jay-v1",
                 status=CanonStatus.BLOCKED_NO_PROVIDER,
-                blocker=f"Provider '{provider_or_reason}' does not support IMAGE_TO_IMAGE",
+                blocker="ComfyUI does not support IMAGE_TO_IMAGE",
             )
             return self.batches.upsert(batch)
 
         hw = resolve_generation_settings(load_hardware_profile(root=self.root))
         width = int(hw["width"])
         height = int(hw["height"])
-        workflow = "style-recovery-img2img-low-vram.json"
+        workflow = STYLE_RECOVERY_WORKFLOW
+        shared_denoise = float(
+            denoise if denoise is not None else STYLE_RECOVERY_DEFAULT_DENOISE
+        )
         seed_map = dict(list(STYLE_RECOVERY_SEEDS.items())[:count])
         candidates: list[CandidateAsset] = []
         notes: list[str] = [
             f"Reference set: {set_id}",
-            f"Conditioning: IMAGE_TO_IMAGE (denoise band {min(STYLE_RECOVERY_DENOISE.values())}"
-            f"–{max(STYLE_RECOVERY_DENOISE.values())})",
+            f"Target: {target}",
+            f"Primary reference: {primary_ref.reference_id} ({Path(primary_ref.file).name})",
+            f"Reference checksum: {primary_ref.checksum}",
+            f"Conditioning: IMAGE_TO_IMAGE via {workflow}",
+            f"Denoise (shared, seed varies): {shared_denoise}",
+            "TXT2IMG_FALLBACK=DISABLED MOCK_FALLBACK=DISABLED",
             "Do not copy reference frames — generalise style only.",
             "Character production BLOCKED until style recovery approved.",
         ]
         base_root = Path(self.root) if self.root else project_root()
         prov_model = load_model_provenance(root=self.root)
 
-        for idx, (cid, seed) in enumerate(seed_map.items()):
-            ref = refs[idx % len(refs)]
-            denoise = STYLE_RECOVERY_DENOISE.get(cid, 0.45)
+        for cid, seed in seed_map.items():
+            slot_denoise = float(STYLE_RECOVERY_DENOISE.get(cid, shared_denoise))
+            # First experiment: force shared denoise (vary seed only)
+            slot_denoise = shared_denoise
             out = (
                 base_root
                 / "production"
@@ -509,7 +577,7 @@ class CanonCreationPipeline:
             out.parent.mkdir(parents=True, exist_ok=True)
             with generation_slot(root=self.root):
                 result = backend.edit_image(
-                    source_image=ref.file,
+                    source_image=primary_ref.file,
                     prompt=STYLE_RECOVERY_PROMPT,
                     negative_prompt=STYLE_RECOVERY_NEGATIVE,
                     output_path=out,
@@ -520,21 +588,35 @@ class CanonCreationPipeline:
                         "cfg": hw.get("cfg_hint") or 7.0,
                         "sampler_name": "euler",
                         "scheduler": "normal",
-                        "denoise": denoise,
+                        "denoise": slot_denoise,
                         "force_width": width,
                         "force_height": height,
                         "candidate_id": cid,
                         "batch_id": batch_id,
                         "capos_canon_step": CanonStep.STYLE_RECOVERY.value,
+                        "enforce_style_recovery_denoise_band": True,
                     },
                 )
             if result.refusal:
                 record_provider_refusal(
-                    backend=provider_or_reason,
+                    backend="comfyui",
                     prompt=STYLE_RECOVERY_PROMPT,
                     refusal=result.refusal,
                 )
                 notes.append(f"{cid}: PROVIDER_REFUSED — {result.refusal}")
+                continue
+            if result.backend == "mock" or result.metadata.get("non_production"):
+                notes.append(f"{cid}: MOCK FALLBACK DISABLED — rejected mock output")
+                continue
+            if result.metadata.get("conditioning_method") != "IMAGE_TO_IMAGE":
+                notes.append(
+                    f"{cid}: REJECTED — conditioning_method="
+                    f"{result.metadata.get('conditioning_method')} (need IMAGE_TO_IMAGE)"
+                )
+                continue
+            result_denoise = result.metadata.get("denoise")
+            if result_denoise is None or float(result_denoise) >= 1.0:
+                notes.append(f"{cid}: REJECTED — denoise={result_denoise} (must be < 1.0)")
                 continue
             if (
                 not result.success
@@ -559,7 +641,7 @@ class CanonCreationPipeline:
                 f"{validation['width']}x{validation['height']}"
             )
             provenance = {
-                "provider": result.metadata.get("provider") or f"{provider_or_reason}-local",
+                "provider": "comfyui-local",
                 "checkpoint": result.metadata.get("checkpoint") or result.model,
                 "model_family": result.metadata.get("model_family")
                 or prov_model.get("architecture"),
@@ -568,16 +650,21 @@ class CanonCreationPipeline:
                 "workflow": result.metadata.get("workflow") or workflow,
                 "workflow_id": result.metadata.get("workflow_id"),
                 "workflow_version": result.metadata.get("workflow_version"),
+                "workflow_mode": "IMG2IMG",
                 "seed": seed,
                 "positive_prompt": STYLE_RECOVERY_PROMPT,
                 "negative_prompt": STYLE_RECOVERY_NEGATIVE,
                 "prompt_compiler_version": STYLE_RECOVERY_PROMPT_VERSION,
                 "conditioning_method": "IMAGE_TO_IMAGE",
-                "conditioning_strength": denoise,
-                "denoise": denoise,
+                "conditioning_strength": slot_denoise,
+                "denoise": slot_denoise,
                 "reference_set_id": set_id,
-                "reference_ids": [ref.reference_id],
-                "reference_checksums": [ref.checksum],
+                "reference_ids": [primary_ref.reference_id],
+                "reference_checksums": [primary_ref.checksum],
+                "reference_file": primary_ref.file,
+                "target": target,
+                "txt2img_fallback": "DISABLED",
+                "mock_fallback": "DISABLED",
                 "width": validation["width"],
                 "height": validation["height"],
                 "steps": result.metadata.get("steps"),
@@ -588,6 +675,7 @@ class CanonCreationPipeline:
                 "duration_ms": result.metadata.get("duration_ms"),
                 "checksum": validation["checksum"],
                 "original_output_path": str(result.output_path),
+                "reference_upload": result.metadata.get("reference_upload"),
             }
             qa = {
                 "FILE_CHECK": "PASS",
@@ -596,6 +684,7 @@ class CanonCreationPipeline:
                 "CHECKSUM": validation["checksum"],
                 "VISUAL_IDENTITY": "REQUIRES_HUMAN_REVIEW",
                 "STYLE_RECOVERY": "REQUIRES_HUMAN_REVIEW",
+                "WORKFLOW_MODE": "IMG2IMG",
                 "identity_claim": False,
                 "images_claimed": True,
                 "human_review_categories": [
@@ -617,8 +706,8 @@ class CanonCreationPipeline:
                     candidate_id=cid,
                     file=meta["file"],
                     checksum=meta["checksum"],
-                    backend=provider_or_reason,
-                    provider=str(provenance["provider"]),
+                    backend="comfyui",
+                    provider="comfyui-local",
                     model=result.model,
                     model_family=str(provenance["model_family"])
                     if provenance["model_family"]
@@ -642,7 +731,7 @@ class CanonCreationPipeline:
                     cfg=provenance.get("cfg"),
                     sampler_name=provenance.get("sampler_name"),
                     scheduler=provenance.get("scheduler"),
-                    denoise=denoise,
+                    denoise=slot_denoise,
                     duration_ms=result.metadata.get("duration_ms"),
                     generated_at=str(provenance["generated_at"]),
                     original_output_path=str(result.output_path),
@@ -653,17 +742,21 @@ class CanonCreationPipeline:
                     non_production=False,
                     batch_kind="style_recovery",
                     conditioning_method="IMAGE_TO_IMAGE",
-                    conditioning_strength=denoise,
+                    conditioning_strength=slot_denoise,
                     reference_set_id=set_id,
-                    reference_ids=[ref.reference_id],
-                    reference_checksums=[ref.checksum],
+                    reference_ids=[primary_ref.reference_id],
+                    reference_checksums=[primary_ref.checksum],
                 )
             )
 
         status = (
             CanonStatus.AWAITING_HUMAN_STYLE_RECOVERY_REVIEW
-            if candidates
-            else CanonStatus.BLOCKED_NO_PROVIDER
+            if len(candidates) == count
+            else (
+                CanonStatus.AWAITING_HUMAN_STYLE_RECOVERY_REVIEW
+                if candidates
+                else CanonStatus.BLOCKED_NO_PROVIDER
+            )
         )
         batch = CandidateBatch(
             batch_id=batch_id,
@@ -674,7 +767,14 @@ class CanonCreationPipeline:
             status=status,
             candidates=candidates,
             recommendation_notes=notes,
-            blocker=None if candidates else "No successful style recovery outputs",
+            blocker=(
+                None
+                if len(candidates) == count
+                else (
+                    f"Only {len(candidates)}/{count} real img2img candidates generated — "
+                    + "; ".join(n for n in notes if "failed" in n.lower() or "REJECTED" in n)
+                )
+            ),
         )
         return self.batches.upsert(batch)
 

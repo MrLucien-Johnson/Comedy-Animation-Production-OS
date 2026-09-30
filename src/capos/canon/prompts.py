@@ -29,17 +29,19 @@ STYLE_MASTER_SEEDS: dict[str, int] = {
 }
 
 # Style recovery — reference-grounded img2img; fixed seeds; do not invent style from text alone
+# First experiment: SAME denoise for all three; vary seed only (preserve established identity)
 STYLE_RECOVERY_SEEDS: dict[str, int] = {
     "style-recovery-candidate-001": 405011,
     "style-recovery-candidate-002": 405022,
     "style-recovery-candidate-003": 405033,
 }
 
-# Conservative denoise band for style retention while allowing composition change
+# Conservative denoise band 0.30–0.45 — NEVER 1.0 for style recovery
+STYLE_RECOVERY_DEFAULT_DENOISE = 0.35
 STYLE_RECOVERY_DENOISE: dict[str, float] = {
     "style-recovery-candidate-001": 0.35,
-    "style-recovery-candidate-002": 0.45,
-    "style-recovery-candidate-003": 0.55,
+    "style-recovery-candidate-002": 0.35,
+    "style-recovery-candidate-003": 0.35,
 }
 
 STYLE_RECOVERY_PROMPT = """

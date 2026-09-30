@@ -16,6 +16,13 @@ from capos.generation.comfyui.workflows import (
     load_workflow,
     workflow_is_configured,
 )
+from capos.generation.comfyui.style_recovery_health import (
+    MAX_STYLE_RECOVERY_DENOISE,
+    MIN_STYLE_RECOVERY_DENOISE,
+    STYLE_RECOVERY_WORKFLOW,
+    assert_img2img_workflow,
+    assert_queued_graph_is_img2img,
+)
 from capos.generation.model_licence import load_model_provenance
 from capos.generation.telemetry import record_generation_telemetry
 from capos.hardware.profile import load_hardware_profile, resolve_generation_settings
@@ -337,7 +344,27 @@ class ComfyUIBackend(GenerationBackend):
             width = min(width, int(hw.get("width", 512)))
             height = min(height, int(hw.get("height", 512)))
 
-        workflow_name = settings.get("workflow") or "style-recovery-img2img-low-vram.json"
+        workflow_name = settings.get("workflow") or STYLE_RECOVERY_WORKFLOW
+        # Hard refuse: never silently use txt2img style-master for edit/recovery
+        if "style-master" in str(workflow_name) and "img2img" not in str(workflow_name):
+            return GenerationResult(
+                success=False,
+                backend=self.name,
+                error=(
+                    "TXT2IMG_FALLBACK_DISABLED: refuse style-master txt2img workflow for edit_image. "
+                    f"Use {STYLE_RECOVERY_WORKFLOW}."
+                ),
+                metadata={"failure_kind": ComfyFailureKind.CONFIG_MISSING.value},
+            )
+        try:
+            assert_img2img_workflow(workflow_name)
+        except RuntimeError as exc:
+            return GenerationResult(
+                success=False,
+                backend=self.name,
+                error=str(exc),
+                metadata={"failure_kind": ComfyFailureKind.CONFIG_MISSING.value},
+            )
         configured, cfg_reason = workflow_is_configured(workflow_name)
         if not configured:
             return GenerationResult(
@@ -392,8 +419,29 @@ class ComfyUIBackend(GenerationBackend):
             denoise = float(
                 settings.get("denoise")
                 if settings.get("denoise") is not None
-                else meta_wf.get("default_settings", {}).get("denoise", 0.45)
+                else meta_wf.get("default_settings", {}).get("denoise", 0.35)
             )
+            if denoise >= 1.0:
+                return GenerationResult(
+                    success=False,
+                    backend=self.name,
+                    error=(
+                        f"TXT2IMG_FALLBACK_DISABLED: denoise={denoise} ≥ 1.0 destroys reference influence. "
+                        f"Use {MIN_STYLE_RECOVERY_DENOISE}–{MAX_STYLE_RECOVERY_DENOISE}."
+                    ),
+                    metadata={"failure_kind": ComfyFailureKind.CONFIG_MISSING.value},
+                )
+            if settings.get("enforce_style_recovery_denoise_band", True):
+                if not (MIN_STYLE_RECOVERY_DENOISE <= denoise <= MAX_STYLE_RECOVERY_DENOISE):
+                    return GenerationResult(
+                        success=False,
+                        backend=self.name,
+                        error=(
+                            f"Style recovery denoise {denoise} outside "
+                            f"{MIN_STYLE_RECOVERY_DENOISE}–{MAX_STYLE_RECOVERY_DENOISE}"
+                        ),
+                        metadata={"failure_kind": ComfyFailureKind.CONFIG_MISSING.value},
+                    )
             checkpoint = os.environ.get("CAPOS_COMFYUI_CHECKPOINT") or meta_wf.get(
                 "default_checkpoint", "toonyou_beta6.safetensors"
             )
@@ -412,6 +460,7 @@ class ComfyUIBackend(GenerationBackend):
                 denoise=denoise,
                 load_image_filename=load_name,
             )
+            assert_queued_graph_is_img2img(wf, denoise=denoise)
             prompt_id = client.queue_prompt(wf)
             history = client.wait_for_completion(
                 prompt_id, timeout_s=float(settings.get("timeout_s", 300))

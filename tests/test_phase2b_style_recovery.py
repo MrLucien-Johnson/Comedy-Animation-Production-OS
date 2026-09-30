@@ -11,7 +11,6 @@ from PIL import Image
 from capos.canon.candidates import CandidateAsset, CandidateBatch, CandidateStore
 from capos.canon.diff import compare_to_reference
 from capos.canon.pipeline import CanonCreationPipeline
-from capos.canon.prompts import STYLE_RECOVERY_SEEDS
 from capos.canon.style_rejection import (
     PHASE2A_BATCH_ID,
     REJECTION_CODE,
@@ -174,15 +173,15 @@ def test_generate_style_recovery_stops_without_refs(tmp_project):
     assert batch.candidates == []
 
 
-def test_generate_style_recovery_with_mock_edit(tmp_project):
+def test_generate_style_recovery_requires_comfyui_not_mock(tmp_project):
     store = VisualReferenceStore("likkle-jay", root=tmp_project)
     ids = []
-    for i in range(3):
-        src = _png(tmp_project / f"rec_{i}.png", color=(170, 110 + i * 5, 70))
+    for i, name in enumerate(["character-likkle-jay-v1", "character-auntie-bev-v1", "kitchen"]):
+        src = _png(tmp_project / f"{name}.png", color=(170, 110 + i * 5, 70))
         ref = store.import_reference(
             src,
             reference_type=VisualReferenceType.STYLE_REFERENCE,
-            reference_id=f"rec-ref-{i}",
+            reference_id=f"style-ref-{name}",
         )
         store.approve_reference(ref.reference_id)
         ids.append(ref.reference_id)
@@ -200,17 +199,38 @@ def test_generate_style_recovery_with_mock_edit(tmp_project):
         pipe = CanonCreationPipeline("likkle-jay", root=tmp_project)
         batch = pipe.generate_style_recovery_candidates(count=3)
 
-    assert batch.status == CanonStatus.AWAITING_HUMAN_STYLE_RECOVERY_REVIEW
-    assert len(batch.candidates) == 3
-    assert set(c.candidate_id for c in batch.candidates) == set(STYLE_RECOVERY_SEEDS)
-    for c in batch.candidates:
-        assert c.conditioning_method == "IMAGE_TO_IMAGE"
-        assert c.reference_set_id == "likkle-jay-style-reference-set-v1"
-        assert c.reference_ids
-        assert c.reference_checksums
-        assert c.denoise is not None
-        assert Path(c.file).is_file()
-        assert c.qa_summary.get("identity_claim") is False
+    assert batch.status == CanonStatus.BLOCKED_NO_PROVIDER
+    assert "comfyui" in (batch.blocker or "").lower() or "MOCK" in (batch.blocker or "").upper()
+    assert batch.candidates == []
+
+
+def test_assert_img2img_workflow_rejects_style_master_txt2img(tmp_project, monkeypatch):
+    from capos.generation.comfyui.style_recovery_health import assert_img2img_workflow
+
+    monkeypatch.setenv("CAPOS_COMFYUI_CHECKPOINT", "toonyou_beta6.safetensors")
+    ok = assert_img2img_workflow("style-recovery-img2img-low-vram.json", root=tmp_project)
+    assert ok["IMAGE_TO_IMAGE"] is True
+    assert ok["mode"] == "img2img"
+    with pytest.raises(RuntimeError, match="TXT2IMG_FALLBACK_DISABLED"):
+        assert_img2img_workflow("style-master-toonyou-beta6.json", root=tmp_project)
+
+
+def test_select_target_reference_prefers_likkle_jay():
+    from types import SimpleNamespace
+
+    from capos.generation.comfyui.style_recovery_health import select_target_reference
+
+    refs = [
+        SimpleNamespace(reference_id="style-ref-kitchen", file="location-kitchen-v1.png", notes=""),
+        SimpleNamespace(
+            reference_id="style-ref-jay",
+            file="character-likkle-jay-v1.png",
+            notes="Likkle Jay",
+        ),
+        SimpleNamespace(reference_id="style-ref-bev", file="character-auntie-bev-v1.png", notes=""),
+    ]
+    chosen = select_target_reference(refs, target="likkle-jay")
+    assert "likkle-jay" in chosen.file
 
 
 def test_drop_folder_import_from_project_root(tmp_project):
