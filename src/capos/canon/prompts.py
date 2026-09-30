@@ -72,6 +72,40 @@ NSFW, gore, celebrity likeness
 PROMPT_COMPILER_VERSION = "capos-style-master-v2"
 STYLE_RECOVERY_PROMPT_VERSION = "capos-style-recovery-v1"
 
+# Phase 2B.1 — Character isolation (clean standalone Likkle Jay, not a sheet)
+CHARACTER_ISOLATION_SEEDS: dict[str, int] = {
+    "character-isolation-candidate-a": 415011,
+    "character-isolation-candidate-b": 415022,
+    "character-isolation-candidate-c": 415033,
+}
+CHARACTER_ISOLATION_DENOISE: dict[str, float] = {
+    "character-isolation-candidate-a": 0.30,
+    "character-isolation-candidate-b": 0.375,
+    "character-isolation-candidate-c": 0.45,
+}
+CHARACTER_ISOLATION_PROMPT = """
+Single fictional cartoon boy character standing alone: Likkle Jay.
+ONE character only. Full body. Front-facing or slight three-quarter stance.
+Simple neutral standing pose. Clean simple background (plain soft warm tone).
+Preserve established character identity from the reference crop:
+medium/dark brown skin, round youthful face, chubby cheeks, large expressive eyes,
+rounded dome of tight black curls (full afro silhouette), yellow/orange T-shirt with red collar trim,
+green shorts, socks, red/white shoes, same cartoon proportions and drawing language.
+Bold dark outlines, flat/simple cel shading, warm family comedy 2D cartoon style.
+Do NOT redesign the character.
+Square 1:1. Fictional animated cartoon only.
+""".strip()
+CHARACTER_ISOLATION_NEGATIVE = """
+text, letters, words, typography, labels, title, subtitle, caption, watermark, signature, logo,
+character sheet, reference sheet, model sheet, turnaround sheet, design sheet,
+colour palette, color palette, swatches, diagram, infographic, annotation, callout,
+multiple views, multiple characters, expression grid, pose grid, collage, comic panel layout,
+speech bubble, UI, interface, paper margins, decorative frame, pseudo-text, gibberish text,
+anime, manga, photorealistic, photography, 3d render, cgi, fashion-model proportions,
+elongated limbs, spiky hair, fade haircut, NSFW, gore, celebrity likeness
+""".strip()
+CHARACTER_ISOLATION_PROMPT_VERSION = "capos-character-isolation-v1"
+
 LIKKLE_JAY_MASTER_PROMPT = """
 Fictional male cartoon character MASTER reference. Young character design.
 Medium/dark brown skin. Round youthful face with rounded cheeks.

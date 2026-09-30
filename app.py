@@ -10,8 +10,9 @@ import streamlit as st
 from capos import __version__
 from capos.canon.bootstrap import bootstrap_likkle_jay_canon
 from capos.canon.candidates import CandidateStore
-from capos.canon.diff import compare_to_canon, compare_to_reference
+from capos.canon.diff import compare_to_canon, compare_to_reference, compare_character_isolation
 from capos.canon.pipeline import CanonCreationPipeline
+from capos.canon.style_recovery_hold import mark_style_recovery_technical_success
 from capos.canon.style_rejection import reject_phase2a_style_drift
 from capos.core.paths import project_root, series_dir
 from capos.core.schemas import WATERMARK_EXACT
@@ -28,6 +29,12 @@ from capos.generation.capabilities import capability_matrix, select_production_p
 from capos.generation.provider_status import provider_dashboard_status
 from capos.generation.registry import try_register_optional_backends
 from capos.pipeline.readiness import evaluate_season_production_ready
+from capos.references.derived_crop import (
+    CropBox,
+    character_isolation_gate,
+    create_derived_character_crop,
+    find_likkle_jay_sheet_reference,
+)
 from capos.references.golden import GoldenFrameStore
 from capos.references.ingestion import VisualReferenceStore
 from capos.references.versioning import ReferenceStore
@@ -48,6 +55,7 @@ nav = st.sidebar.radio(
         "Canon Candidates",
         "Compare to Canon",
         "Compare to Reference",
+        "Character Isolation Compare",
         "Characters",
         "Locations",
         "Props",
@@ -176,9 +184,21 @@ elif nav == "Canon Candidates":
         st.info(next_step.get("ui_action") or "")
     if next_step.get("stop") == "AWAITING_HUMAN_STYLE_RECOVERY_REVIEW":
         st.success("Style recovery candidates awaiting human review — do not generate characters yet.")
+    if next_step.get("status") == "TECHNICAL_SUCCESS_STYLE_RECOVERY_NOT_YET_APPROVED" or (
+        next_step.get("style_recovery") == "TECHNICAL_SUCCESS_STYLE_RECOVERY_NOT_YET_APPROVED"
+    ):
+        st.warning(
+            "Phase 2B technical success — NOT approved (sheet contamination). "
+            "Proceed to 2B.1 character isolation via derived front crop."
+        )
+    if next_step.get("stop") == "AWAITING_HUMAN_CHARACTER_ISOLATION_REVIEW":
+        st.success("Character isolation candidates awaiting human review.")
 
     if st.button("Mark Phase 2A style candidates REJECTED (style drift)"):
         st.json(reject_phase2a_style_drift(series_id, root=root))
+        st.rerun()
+    if st.button("Mark Phase 2B recovery TECHNICAL_SUCCESS (not approved)"):
+        st.json(mark_style_recovery_technical_success(series_id, root=root))
         st.rerun()
 
     c1, c2, c3, c4 = st.columns(4)
@@ -189,12 +209,15 @@ elif nav == "Canon Candidates":
     if c2.button("Generate STYLE RECOVERY (×3) [Phase 2B]"):
         st.write(pipe.generate_style_recovery_candidates(count=3).model_dump())
         st.rerun()
-    if c3.button("Generate LIKKLE JAY candidates (×3)"):
-        st.warning("Character production blocked until style recovery approved.")
+    if c3.button("Generate CHARACTER ISOLATION A/B/C [Phase 2B.1]"):
+        st.write(pipe.generate_character_isolation_candidates().model_dump())
+        st.rerun()
+    if c4.button("Generate LIKKLE JAY master (blocked until isolation/style approved)"):
+        st.warning("Do not generate character masters until isolation review passes.")
         st.write(pipe.generate_likkle_jay_candidates(count=3).model_dump())
         st.rerun()
-    if c4.button("Generate AUNTIE BEV candidates (×3)"):
-        st.warning("Character production blocked until style recovery approved.")
+    if st.button("Generate AUNTIE BEV candidates (×3)"):
+        st.warning("Blocked until style/character isolation approved.")
         st.write(pipe.generate_auntie_bev_candidates(count=3).model_dump())
         st.rerun()
     loc_cols = st.columns(4)
@@ -211,26 +234,46 @@ elif nav == "Canon Candidates":
     rejected_ids = {
         b.batch_id
         for b in all_batches
-        if b.status == CanonStatus.HUMAN_REJECTED_STYLE_DRIFT
+        if b.status
+        in {
+            CanonStatus.HUMAN_REJECTED_STYLE_DRIFT,
+            CanonStatus.TECHNICAL_SUCCESS_STYLE_RECOVERY_NOT_YET_APPROVED,
+        }
         or b.batch_id == "style-master-batch-001"
     }
     recovery_ids = {
         b.batch_id
         for b in all_batches
         if b.step == CanonStep.STYLE_RECOVERY
-        or (b.candidates and any(c.batch_kind == "style_recovery" for c in b.candidates))
+        and b.batch_id not in rejected_ids
+        and b.status != CanonStatus.TECHNICAL_SUCCESS_STYLE_RECOVERY_NOT_YET_APPROVED
+    }
+    isolation_ids = {
+        b.batch_id
+        for b in all_batches
+        if b.step == CanonStep.CHARACTER_ISOLATION
+        or (b.candidates and any(c.batch_kind == "character_isolation" for c in b.candidates))
     }
     rejected_batches = [b for b in all_batches if b.batch_id in rejected_ids]
     recovery_batches = [
         b for b in all_batches if b.batch_id in recovery_ids and b.batch_id not in rejected_ids
     ]
+    isolation_batches = [
+        b
+        for b in all_batches
+        if b.batch_id in isolation_ids
+        and b.batch_id not in rejected_ids
+        and b.batch_id not in recovery_ids
+    ]
     other_batches = [
         b
         for b in all_batches
-        if b.batch_id not in rejected_ids and b.batch_id not in recovery_ids
+        if b.batch_id not in rejected_ids
+        and b.batch_id not in recovery_ids
+        and b.batch_id not in isolation_ids
     ]
 
-    st.markdown("### Rejected Phase 2A candidates (do not select as canon)")
+    st.markdown("### Held / rejected style batches (do not select as canon)")
     for batch in rejected_batches:
         with st.expander(
             f"{batch.batch_id} · {_status_badge(batch.status)} → {batch.target_asset_id}",
@@ -246,13 +289,13 @@ elif nav == "Canon Candidates":
                     if cand.file and Path(cand.file).is_file():
                         st.image(cand.file, use_container_width=True)
                     st.caption(f"rejection: {cand.rejection_code or cand.rejection_reason}")
-                    st.info("SELECT disabled — HUMAN_REJECTED_STYLE_DRIFT")
+                    st.info("SELECT disabled — not approved for canon")
 
     st.markdown("### Reference-grounded style recovery candidates")
     for batch in recovery_batches:
         with st.expander(
             f"{batch.batch_id} · {_status_badge(batch.status)} → {batch.target_asset_id}",
-            expanded=True,
+            expanded=False,
         ):
             if batch.blocker:
                 st.error(batch.blocker)
@@ -265,34 +308,43 @@ elif nav == "Canon Candidates":
                     st.markdown(f"**{cand.candidate_id}**")
                     if cand.file and Path(cand.file).is_file():
                         st.image(cand.file, use_container_width=True)
-                    else:
-                        st.warning("No file")
-                    st.caption(
-                        f"checkpoint: `{cand.model}` · seed: `{cand.seed}` · "
-                        f"denoise: `{cand.denoise}` · {cand.conditioning_method}"
-                    )
-                    st.json(
-                        {
-                            "reference_set_id": cand.reference_set_id,
-                            "reference_ids": cand.reference_ids,
-                            "reference_checksums": cand.reference_checksums,
-                            "qa": cand.qa_summary,
-                            "workflow": cand.workflow,
-                        }
-                    )
-                    if st.button("SELECT", key=f"sel_{batch.batch_id}_{cand.candidate_id}"):
+                    st.caption(f"denoise `{cand.denoise}` · seed `{cand.seed}`")
+                    if cand.qa_summary.get("do_not_select_as_canon"):
+                        st.info("SELECT disabled")
+                        continue
+                    if st.button("SELECT", key=f"sel_rec_{batch.batch_id}_{cand.candidate_id}"):
                         try:
                             pipe.promote_selection_to_canon(batch.batch_id, cand.candidate_id)
-                            st.success(
-                                f"Selected {cand.candidate_id}. APPROVE on Canon page to lock."
-                            )
                             st.rerun()
                         except Exception as exc:
                             st.error(str(exc))
-                    if st.button("REJECT", key=f"rej_{batch.batch_id}_{cand.candidate_id}"):
-                        cand.status = CanonStatus.REJECTED
-                        store_b.upsert(batch)
-                        st.rerun()
+
+    st.markdown("### Phase 2B.1 Character isolation candidates (clean standalone Jay)")
+    for batch in isolation_batches:
+        with st.expander(
+            f"{batch.batch_id} · {_status_badge(batch.status)} → {batch.target_asset_id}",
+            expanded=True,
+        ):
+            if batch.blocker:
+                st.error(batch.blocker)
+            st.write(batch.recommendation_notes)
+            cols = st.columns(max(len(batch.candidates), 1))
+            for idx, cand in enumerate(batch.candidates):
+                with cols[idx % len(cols)]:
+                    st.markdown(f"**{cand.candidate_id}**")
+                    if cand.file and Path(cand.file).is_file():
+                        st.image(cand.file, use_container_width=True)
+                    st.caption(
+                        f"seed `{cand.seed}` · denoise `{cand.denoise}` · {cand.conditioning_method}"
+                    )
+                    st.json(
+                        {
+                            "reference_ids": cand.reference_ids,
+                            "reference_checksums": cand.reference_checksums,
+                            "qa": cand.qa_summary,
+                        }
+                    )
+                    st.info("Human review only — do not auto-approve / alter canon")
 
     st.markdown("### Other candidate batches")
     for batch in other_batches:
@@ -425,6 +477,43 @@ elif nav == "Compare to Reference":
         for cat in report.get("human_review_categories") or []:
             st.checkbox(cat, key=f"hr_{cat}", value=False)
 
+elif nav == "Character Isolation Compare":
+    st.subheader("Phase 2B.1 — ORIGINAL / DERIVED / A / B / C")
+    st.caption("Human judgment is authoritative. No fake identity score.")
+    report = compare_character_isolation(series_id=series_id, root=root)
+    st.json(
+        {
+            "gate": report.get("gate"),
+            "original": report.get("original_reference"),
+            "derived": report.get("derived_reference"),
+        }
+    )
+    cols = st.columns(5)
+    with cols[0]:
+        st.markdown("**ORIGINAL**")
+        o = report.get("original_reference") or {}
+        if o.get("file") and Path(o["file"]).is_file():
+            st.image(o["file"], use_container_width=True)
+        st.caption(o.get("reference_id") or "missing")
+    with cols[1]:
+        st.markdown("**DERIVED**")
+        d = report.get("derived_reference") or {}
+        if d.get("file") and Path(d["file"]).is_file():
+            st.image(d["file"], use_container_width=True)
+        st.caption(d.get("reference_id") or "missing")
+        st.json({"crop": d.get("crop"), "approved": d.get("status")})
+    cands = report.get("candidates") or {}
+    for i, slot in enumerate(("A", "B", "C"), start=2):
+        with cols[i]:
+            st.markdown(f"**CANDIDATE {slot}**")
+            meta = cands.get(slot) or {}
+            if meta.get("file") and Path(meta["file"]).is_file():
+                st.image(meta["file"], use_container_width=True)
+            st.caption(f"seed={meta.get('seed')} · denoise={meta.get('denoise')}")
+    st.markdown("**Human review categories**")
+    for cat in report.get("human_review_categories") or []:
+        st.checkbox(cat, key=f"iso_{cat}", value=False)
+
 elif nav == "Characters":
     st.subheader("Characters")
     store = ReferenceStore(series_id, root=root)
@@ -492,6 +581,60 @@ elif nav == "References":
             st.rerun()
         except Exception as exc:
             st.error(str(exc))
+
+    st.markdown("### CREATE DERIVED CHARACTER REFERENCE (Phase 2B.1)")
+    st.caption(
+        "Crop one front-facing full-body Likkle Jay from the character sheet. "
+        "Original file is never modified. Derived ref requires human approval."
+    )
+    iso_gate = character_isolation_gate(vstore)
+    st.json(iso_gate)
+    sheet = find_likkle_jay_sheet_reference(vstore)
+    source_options = [r.reference_id for r in vstore.list_references()]
+    default_src = sheet.reference_id if sheet else (source_options[0] if source_options else "")
+    src_id = st.selectbox(
+        "Source sheet reference",
+        source_options or ["(import sheet first)"],
+        index=source_options.index(default_src) if default_src in source_options else 0,
+    )
+    src_ref = vstore.get(src_id) if src_id in source_options else None
+    if src_ref and Path(src_ref.file).is_file():
+        from PIL import Image as PILImage
+
+        with PILImage.open(src_ref.file) as im:
+            sw, sh = im.size
+        st.image(src_ref.file, caption=f"Source {src_ref.reference_id} · {sw}×{sh}")
+        c1, c2, c3, c4 = st.columns(4)
+        left = c1.number_input("left", min_value=0, max_value=sw - 1, value=0)
+        top = c2.number_input("top", min_value=0, max_value=sh - 1, value=0)
+        right = c3.number_input("right", min_value=1, max_value=sw, value=min(sw, 256))
+        bottom = c4.number_input("bottom", min_value=1, max_value=sh, value=min(sh, 512))
+        if right > left and bottom > top:
+            with PILImage.open(src_ref.file) as im:
+                preview = im.convert("RGB").crop((int(left), int(top), int(right), int(bottom)))
+            st.image(preview, caption="Crop preview", use_container_width=True)
+        derived_id = st.text_input("Derived ID", "character-likkle-jay-front-derived-v1")
+        crop_notes = st.text_input(
+            "Notes",
+            "Front-facing full-body Likkle Jay isolated from character sheet",
+        )
+        if st.button("SAVE DERIVED REFERENCE"):
+            try:
+                derived = create_derived_character_crop(
+                    vstore,
+                    source_reference_id=src_id,
+                    crop=CropBox(int(left), int(top), int(right), int(bottom)),
+                    derived_id=derived_id,
+                    notes=crop_notes,
+                )
+                st.success(
+                    f"Saved {derived.reference_id} · checksum {derived.checksum[:16]}… "
+                    "(status CANDIDATE — approve below)"
+                )
+                st.json(derived.provenance)
+                st.rerun()
+            except Exception as exc:
+                st.error(str(exc))
 
     st.markdown("### Import Visual Reference")
     ref_type = st.selectbox(
