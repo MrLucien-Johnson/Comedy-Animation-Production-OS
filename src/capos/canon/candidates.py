@@ -117,6 +117,8 @@ class CandidateStore:
             in {
                 CanonStatus.AWAITING_HUMAN_SELECTION,
                 CanonStatus.AWAITING_HUMAN_STYLE_RECOVERY_REVIEW,
+                CanonStatus.TECHNICAL_SUCCESS_STYLE_RECOVERY_NOT_YET_APPROVED,
+                CanonStatus.AWAITING_HUMAN_CHARACTER_ISOLATION_REVIEW,
             }
             and b.candidates
         ]
@@ -140,6 +142,11 @@ class CandidateStore:
             raise ValidationError(
                 "Cannot select HUMAN_REJECTED_STYLE_DRIFT candidate as canon",
                 hint="Use reference-grounded style recovery candidates instead.",
+            )
+        if chosen.status == CanonStatus.TECHNICAL_SUCCESS_STYLE_RECOVERY_NOT_YET_APPROVED:
+            raise ValidationError(
+                "Cannot select technical-success style recovery as canon yet",
+                hint="Complete Phase 2B.1 character isolation first.",
             )
         if chosen.qa_summary.get("do_not_select_as_canon"):
             raise ValidationError(

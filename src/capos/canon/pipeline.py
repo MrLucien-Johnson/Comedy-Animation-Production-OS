@@ -9,6 +9,11 @@ from capos.canon.candidates import CandidateAsset, CandidateBatch, CandidateStor
 from capos.canon.prompts import (
     AUNTIE_BEV_MASTER_PROMPT,
     BEDROOM_EMPTY_PROMPT,
+    CHARACTER_ISOLATION_DENOISE,
+    CHARACTER_ISOLATION_NEGATIVE,
+    CHARACTER_ISOLATION_PROMPT,
+    CHARACTER_ISOLATION_PROMPT_VERSION,
+    CHARACTER_ISOLATION_SEEDS,
     COOKIE_JAR_PROMPT,
     KITCHEN_EMPTY_PROMPT,
     LIKKLE_JAY_MASTER_PROMPT,
@@ -40,7 +45,8 @@ from capos.references.versioning import ReferenceStore
 
 CANON_DEPENDENCIES: dict[CanonStep, list[str]] = {
     CanonStep.STYLE_MASTER: [],
-    CanonStep.STYLE_RECOVERY: [],  # gated by VisualReferenceStore, not style-likkle-jay-v1
+    CanonStep.STYLE_RECOVERY: [],
+    CanonStep.CHARACTER_ISOLATION: [],
     CanonStep.LIKKLE_JAY_MASTER: ["style-likkle-jay-v1"],
     CanonStep.AUNTIE_BEV_MASTER: ["style-likkle-jay-v1"],
     CanonStep.CHARACTER_TURNAROUNDS: ["character-likkle-jay-v1", "character-auntie-bev-v1"],
@@ -778,6 +784,274 @@ class CanonCreationPipeline:
         )
         return self.batches.upsert(batch)
 
+    def generate_character_isolation_candidates(
+        self,
+        *,
+        derived_id: str = "character-likkle-jay-front-derived-v1",
+    ) -> CandidateBatch:
+        """Phase 2B.1 — three clean standalone Likkle Jay images from derived crop.
+
+        Uses cropped front reference only (not full character sheet). Denoise A/B/C:
+        0.30 / 0.375 / 0.45. ComfyUI img2img only. No mock/txt2img fallback.
+        """
+        from capos.generation.comfyui.style_recovery_health import (
+            STYLE_RECOVERY_WORKFLOW,
+            comfyui_style_recovery_healthcheck,
+        )
+        from capos.references.derived_crop import character_isolation_gate
+        from capos.references.ingestion import VisualReferenceStore
+
+        batch_id = "character-isolation-batch-001"
+        vstore = VisualReferenceStore(self.series_id, root=self.root)
+        gate = character_isolation_gate(vstore)
+        if not gate["ready"]:
+            return self.batches.upsert(
+                CandidateBatch(
+                    batch_id=batch_id,
+                    series_id=self.series_id,
+                    step=CanonStep.CHARACTER_ISOLATION,
+                    target_asset_id="character-likkle-jay-v1",
+                    status=CanonStatus.AWAITING_DERIVED_REFERENCE_APPROVAL,
+                    blocker=gate.get("stop") or "AWAITING_DERIVED_REFERENCE_APPROVAL",
+                    recommendation_notes=[
+                        str(gate.get("ui_action") or ""),
+                        f"Preferred derived id: {derived_id}",
+                        "Crop front-facing full-body Jay from character sheet; approve derived ref.",
+                    ],
+                )
+            )
+
+        derived = vstore.get(derived_id)
+        if not derived or derived.status != CanonStatus.APPROVED or not Path(derived.file).is_file():
+            return self.batches.upsert(
+                CandidateBatch(
+                    batch_id=batch_id,
+                    series_id=self.series_id,
+                    step=CanonStep.CHARACTER_ISOLATION,
+                    target_asset_id="character-likkle-jay-v1",
+                    status=CanonStatus.AWAITING_DERIVED_REFERENCE_APPROVAL,
+                    blocker=f"Derived reference not approved: {derived_id}",
+                )
+            )
+
+        ok, provider_or_reason = self.can_generate_production()
+        if not ok or provider_or_reason != "comfyui":
+            return self.batches.upsert(
+                CandidateBatch(
+                    batch_id=batch_id,
+                    series_id=self.series_id,
+                    step=CanonStep.CHARACTER_ISOLATION,
+                    target_asset_id="character-likkle-jay-v1",
+                    status=CanonStatus.BLOCKED_NO_PROVIDER,
+                    blocker=(
+                        provider_or_reason
+                        if not ok
+                        else f"MOCK FALLBACK DISABLED — need comfyui, got {provider_or_reason}"
+                    ),
+                )
+            )
+
+        health = comfyui_style_recovery_healthcheck(
+            reference_path=derived.file,
+            root=self.root,
+        )
+        if not health.get("ok"):
+            return self.batches.upsert(
+                CandidateBatch(
+                    batch_id=batch_id,
+                    series_id=self.series_id,
+                    step=CanonStep.CHARACTER_ISOLATION,
+                    target_asset_id="character-likkle-jay-v1",
+                    status=CanonStatus.BLOCKED_NO_PROVIDER,
+                    blocker=health.get("remediation") or "ComfyUI img2img health check failed",
+                )
+            )
+
+        from capos.generation.registry import try_register_optional_backends
+
+        try_register_optional_backends()
+        backend = _REGISTRY["comfyui"]()
+        hw = resolve_generation_settings(load_hardware_profile(root=self.root))
+        width = int(hw["width"])
+        height = int(hw["height"])
+        workflow = STYLE_RECOVERY_WORKFLOW
+        candidates: list[CandidateAsset] = []
+        notes: list[str] = [
+            "Phase 2B.1 CHARACTER ISOLATION",
+            f"Derived reference: {derived.reference_id}",
+            f"Source sheet: {(derived.provenance or {}).get('source_reference_id')}",
+            f"Crop: {(derived.provenance or {}).get('crop')}",
+            "Goal: ONE clean standalone Likkle Jay — NOT a character sheet",
+            "Denoise experiment: A=0.30 B=0.375 C=0.45 (0.50 blocked by policy band)",
+            "TXT2IMG_FALLBACK=DISABLED MOCK_FALLBACK=DISABLED",
+        ]
+        base_root = Path(self.root) if self.root else project_root()
+        prov_model = load_model_provenance(root=self.root)
+
+        for cid, seed in CHARACTER_ISOLATION_SEEDS.items():
+            denoise = float(CHARACTER_ISOLATION_DENOISE[cid])
+            out = (
+                base_root
+                / "production"
+                / self.series_id
+                / "candidates"
+                / "characters"
+                / "isolation"
+                / f"{cid}.png"
+            )
+            out.parent.mkdir(parents=True, exist_ok=True)
+            with generation_slot(root=self.root):
+                result = backend.edit_image(
+                    source_image=derived.file,
+                    prompt=CHARACTER_ISOLATION_PROMPT,
+                    negative_prompt=CHARACTER_ISOLATION_NEGATIVE,
+                    output_path=out,
+                    settings={
+                        "seed": seed,
+                        "workflow": workflow,
+                        "steps": hw.get("steps_hint") or 20,
+                        "cfg": hw.get("cfg_hint") or 7.0,
+                        "sampler_name": "euler",
+                        "scheduler": "normal",
+                        "denoise": denoise,
+                        "force_width": width,
+                        "force_height": height,
+                        "candidate_id": cid,
+                        "batch_id": batch_id,
+                        "capos_canon_step": CanonStep.CHARACTER_ISOLATION.value,
+                        "enforce_style_recovery_denoise_band": True,
+                    },
+                )
+            if (
+                not result.success
+                or not result.output_path
+                or not Path(result.output_path).is_file()
+                or result.backend == "mock"
+                or result.metadata.get("conditioning_method") != "IMAGE_TO_IMAGE"
+                or float(result.metadata.get("denoise") or 1.0) >= 1.0
+            ):
+                notes.append(f"{cid}: FAILED — {result.error or result.metadata}")
+                continue
+            validation = validate_candidate_image(Path(result.output_path), require_square=True)
+            if not validation["ok"]:
+                notes.append(f"{cid}: validation failed — {validation.get('error')}")
+                continue
+            meta = register_production_file(
+                series_id=self.series_id,
+                category="characters",
+                asset_slug="isolation",
+                source_path=Path(result.output_path),
+                root=self.root,
+                kind="candidate",
+            )
+            slot = cid.rsplit("-", 1)[-1].upper()  # A/B/C
+            provenance = {
+                "phase": "2B.1",
+                "experiment": "character_isolation",
+                "slot": slot,
+                "provider": "comfyui-local",
+                "checkpoint": result.metadata.get("checkpoint") or result.model,
+                "workflow": workflow,
+                "workflow_id": result.metadata.get("workflow_id"),
+                "workflow_mode": "IMG2IMG",
+                "conditioning_method": "IMAGE_TO_IMAGE",
+                "denoise": denoise,
+                "seed": seed,
+                "steps": result.metadata.get("steps"),
+                "cfg": result.metadata.get("cfg"),
+                "sampler_name": result.metadata.get("sampler_name"),
+                "scheduler": result.metadata.get("scheduler"),
+                "derived_reference_id": derived.reference_id,
+                "derived_checksum": derived.checksum,
+                "source_reference_id": (derived.provenance or {}).get("source_reference_id"),
+                "source_sha256": (derived.provenance or {}).get("source_sha256"),
+                "crop": (derived.provenance or {}).get("crop"),
+                "positive_prompt": CHARACTER_ISOLATION_PROMPT,
+                "negative_prompt": CHARACTER_ISOLATION_NEGATIVE,
+                "prompt_compiler_version": CHARACTER_ISOLATION_PROMPT_VERSION,
+                "txt2img_fallback": "DISABLED",
+                "mock_fallback": "DISABLED",
+                "checksum": validation["checksum"],
+                "generated_at": utcnow().isoformat(),
+                "duration_ms": result.metadata.get("duration_ms"),
+                "model_family": result.metadata.get("model_family")
+                or prov_model.get("architecture"),
+            }
+            candidates.append(
+                CandidateAsset(
+                    candidate_id=cid,
+                    file=meta["file"],
+                    checksum=meta["checksum"],
+                    backend="comfyui",
+                    provider="comfyui-local",
+                    model=result.model,
+                    model_family=provenance.get("model_family"),
+                    seed=seed,
+                    prompt_version=CHARACTER_ISOLATION_PROMPT_VERSION,
+                    positive_prompt=CHARACTER_ISOLATION_PROMPT,
+                    negative_prompt=CHARACTER_ISOLATION_NEGATIVE,
+                    workflow=workflow,
+                    workflow_id=provenance.get("workflow_id"),
+                    generation_resolution=f"{validation['width']}x{validation['height']}",
+                    width=validation["width"],
+                    height=validation["height"],
+                    steps=provenance.get("steps"),
+                    cfg=provenance.get("cfg"),
+                    sampler_name=provenance.get("sampler_name"),
+                    scheduler=provenance.get("scheduler"),
+                    denoise=denoise,
+                    duration_ms=result.metadata.get("duration_ms"),
+                    generated_at=str(provenance["generated_at"]),
+                    original_output_path=str(result.output_path),
+                    qa_summary={
+                        "FILE_CHECK": "PASS",
+                        "CHECKSUM": validation["checksum"],
+                        "WORKFLOW_MODE": "IMG2IMG",
+                        "CHARACTER_ISOLATION": "REQUIRES_HUMAN_REVIEW",
+                        "identity_claim": False,
+                        "human_review_categories": [
+                            "FACE_IDENTITY",
+                            "HAIR",
+                            "AGE",
+                            "PROPORTIONS",
+                            "CLOTHING",
+                            "COLOUR_PALETTE",
+                            "LINEWORK",
+                            "SERIES_STYLE",
+                            "POSE_QUALITY",
+                            "ARTIFACTS",
+                            "OVERALL_CONTINUITY",
+                        ],
+                    },
+                    provenance=provenance,
+                    status=CanonStatus.CANDIDATE,
+                    batch_kind="character_isolation",
+                    conditioning_method="IMAGE_TO_IMAGE",
+                    conditioning_strength=denoise,
+                    reference_set_id=None,
+                    reference_ids=[derived.reference_id],
+                    reference_checksums=[derived.checksum],
+                )
+            )
+
+        status = (
+            CanonStatus.AWAITING_HUMAN_CHARACTER_ISOLATION_REVIEW
+            if candidates
+            else CanonStatus.BLOCKED_NO_PROVIDER
+        )
+        return self.batches.upsert(
+            CandidateBatch(
+                batch_id=batch_id,
+                series_id=self.series_id,
+                step=CanonStep.CHARACTER_ISOLATION,
+                target_asset_id="character-likkle-jay-v1",
+                status=status,
+                candidates=candidates,
+                recommendation_notes=notes,
+                blocker=None if len(candidates) == 3 else f"Only {len(candidates)}/3 isolation candidates",
+            )
+        )
+
     def regenerate_style_same_seed(self, candidate_id: str) -> CandidateBatch:
         """Regenerate one style slot with the same permanent seed; keep prior as history."""
         if candidate_id not in STYLE_MASTER_SEEDS:
@@ -1094,9 +1368,21 @@ class CanonCreationPipeline:
 
     def next_actionable_step(self) -> dict[str, Any]:
         """Report which step can proceed and what is awaiting human selection."""
+        from capos.references.derived_crop import character_isolation_gate
         from capos.references.ingestion import VisualReferenceStore
 
         awaiting = self.batches.awaiting_human()
+        isolation = self.batches.get("character-isolation-batch-001")
+        if isolation and isolation.status == CanonStatus.AWAITING_HUMAN_CHARACTER_ISOLATION_REVIEW:
+            return {
+                "step": CanonStep.CHARACTER_ISOLATION.value,
+                "status": isolation.status.value,
+                "stop": "AWAITING_HUMAN_CHARACTER_ISOLATION_REVIEW",
+                "batch_id": isolation.batch_id,
+                "candidate_count": len(isolation.candidates),
+                "note": "Review clean standalone Likkle Jay isolation candidates. Do not approve style/canon yet.",
+            }
+
         recovery = self.batches.get("style-recovery-batch-001")
         if recovery and recovery.status == CanonStatus.AWAITING_HUMAN_STYLE_RECOVERY_REVIEW:
             return {
@@ -1107,10 +1393,35 @@ class CanonCreationPipeline:
                 "candidate_count": len(recovery.candidates),
                 "note": "Human must review style recovery candidates before character production.",
             }
+        if recovery and recovery.status == CanonStatus.TECHNICAL_SUCCESS_STYLE_RECOVERY_NOT_YET_APPROVED:
+            iso_gate = character_isolation_gate(
+                VisualReferenceStore(self.series_id, root=self.root)
+            )
+            return {
+                "step": CanonStep.CHARACTER_ISOLATION.value,
+                "status": recovery.status.value,
+                "stop": (
+                    None
+                    if iso_gate["ready"]
+                    else iso_gate.get("stop") or "AWAITING_DERIVED_REFERENCE_APPROVAL"
+                ),
+                "style_recovery": "TECHNICAL_SUCCESS_STYLE_RECOVERY_NOT_YET_APPROVED",
+                "character_isolation_gate": iso_gate,
+                "note": "Style recovery not approved (sheet contamination). Run 2B.1 character isolation.",
+            }
 
-        # Style not locked → prefer recovery path over text-only invention
+        # Style not locked → prefer recovery / isolation path over text-only invention
         if not _approved_with_file(self.store, "style-likkle-jay-v1"):
-            gate = VisualReferenceStore(self.series_id, root=self.root).style_recovery_gate()
+            vstore = VisualReferenceStore(self.series_id, root=self.root)
+            iso_gate = character_isolation_gate(vstore)
+            if iso_gate.get("derived_reference"):
+                return {
+                    "step": CanonStep.CHARACTER_ISOLATION.value,
+                    "stop": None if iso_gate["ready"] else iso_gate.get("stop"),
+                    "character_isolation_gate": iso_gate,
+                    "note": "Continue Phase 2B.1 character isolation.",
+                }
+            gate = vstore.style_recovery_gate()
             phase2a = self.batches.get("style-master-batch-001")
             phase2a_rejected = bool(
                 phase2a and phase2a.status == CanonStatus.HUMAN_REJECTED_STYLE_DRIFT

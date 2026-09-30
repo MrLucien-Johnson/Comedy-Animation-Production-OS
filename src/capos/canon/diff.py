@@ -32,6 +32,20 @@ HUMAN_STYLE_REVIEW_CATEGORIES = (
     "OVERALL_CONTINUITY",
 )
 
+HUMAN_ISOLATION_REVIEW_CATEGORIES = (
+    "FACE_IDENTITY",
+    "HAIR",
+    "AGE",
+    "PROPORTIONS",
+    "CLOTHING",
+    "COLOUR_PALETTE",
+    "LINEWORK",
+    "SERIES_STYLE",
+    "POSE_QUALITY",
+    "ARTIFACTS",
+    "OVERALL_CONTINUITY",
+)
+
 
 def compare_to_canon(
     *,
@@ -174,3 +188,50 @@ def compare_to_reference(
             }
         result["comparisons"].append(entry)
     return result
+
+
+def compare_character_isolation(
+    *,
+    series_id: str,
+    root: Path | None = None,
+) -> dict[str, Any]:
+    """ORIGINAL sheet + DERIVED crop + isolation candidates A/B/C — human review only."""
+    from capos.canon.candidates import CandidateStore
+    from capos.references.derived_crop import character_isolation_gate
+    from capos.references.ingestion import VisualReferenceStore
+
+    vstore = VisualReferenceStore(series_id, root=root)
+    gate = character_isolation_gate(vstore)
+    batch = CandidateStore(series_id, root=root).get("character-isolation-batch-001")
+    candidates = {}
+    if batch:
+        for c in batch.candidates:
+            slot = "A" if c.candidate_id.endswith("-a") else (
+                "B" if c.candidate_id.endswith("-b") else (
+                    "C" if c.candidate_id.endswith("-c") else c.candidate_id
+                )
+            )
+            candidates[slot] = {
+                "candidate_id": c.candidate_id,
+                "file": c.file,
+                "seed": c.seed,
+                "denoise": c.denoise,
+                "checksum": c.checksum,
+            }
+    return {
+        "phase": "2B.1",
+        "original_reference": gate.get("original_reference"),
+        "derived_reference": gate.get("derived_reference"),
+        "candidates": candidates,
+        "human_review_categories": list(HUMAN_ISOLATION_REVIEW_CATEGORIES),
+        "identity_claim": False,
+        "semantic_identity_score": None,
+        "review_required": True,
+        "gate": gate.get("stop")
+        or (
+            batch.status.value
+            if batch and hasattr(batch.status, "value")
+            else "AWAITING_HUMAN_CHARACTER_ISOLATION_REVIEW"
+        ),
+        "note": "Human judgment is authoritative — no fake identity score.",
+    }
